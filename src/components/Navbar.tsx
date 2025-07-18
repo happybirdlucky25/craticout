@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Bell, User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, Bell, User, Settings, LogOut, ChevronDown, CreditCard, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,7 +26,7 @@ const Navbar = () => {
     { to: "/reports", label: "Reports" },
     { to: "/campaigns", label: "Campaigns" },
     { to: "/legislators", label: "Legislators" },
-    { to: "/help", label: "Help" },
+    { to: "/civic-education", label: "Civic Hub" },
   ];
 
   const authLinks = isAuthenticated 
@@ -47,21 +47,20 @@ const Navbar = () => {
     window.location.href = "/";
   };
 
-  const getUserInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n.charAt(0))
-      .join('')
-      .toUpperCase();
-  };
-
   return (
     <nav className="bg-background border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-foreground">
-              ShadowCongress
+            <Link to="/" className="flex items-center space-x-3">
+              <img 
+                src="/logo.png" 
+                alt="ShadowCongress Logo" 
+                className="h-8 w-8"
+              />
+              <span className="text-xl font-bold text-foreground">
+                ShadowCongress
+              </span>
             </Link>
           </div>
 
@@ -115,7 +114,7 @@ const Navbar = () => {
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar} alt={user?.name} />
                       <AvatarFallback className="text-xs">
-                        {user?.name ? getUserInitials(user.name) : 'U'}
+                        <User className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden sm:block text-sm font-medium">
@@ -125,20 +124,38 @@ const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  {authLinks.map((link) => (
-                    <DropdownMenuItem key={link.to} asChild>
-                      <Link to={link.to}>
-                        <User className="h-4 w-4 mr-2" />
-                        {link.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/settings">
                       <Settings className="h-4 w-4 mr-2" />
                       Settings
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/billing">
+                      <Receipt className="h-4 w-4 mr-2" />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/pricing">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Upgrade to Premium
+                    </Link>
+                  </DropdownMenuItem>
+                  {user?.role === 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />
@@ -203,16 +220,48 @@ const Navbar = () => {
                       </Badge>
                     )}
                   </Link>
-                  {authLinks.map((link) => (
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <User className="h-5 w-5 mr-2" />
+                    Profile
+                  </Link>
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Settings className="h-5 w-5 mr-2" />
+                    Settings
+                  </Link>
+                  <Link
+                    to="/billing"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Billing
+                  </Link>
+                  <Link
+                    to="/pricing"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Upgrade to Premium
+                  </Link>
+                  {user?.role === 'admin' && (
                     <Link
-                      key={link.to}
-                      to={link.to}
+                      to="/admin"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                      className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                     >
-                      {link.label}
+                      <Settings className="h-5 w-5 mr-2" />
+                      Admin
                     </Link>
-                  ))}
+                  )}
                 </>
               )}
               

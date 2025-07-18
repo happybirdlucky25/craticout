@@ -6,7 +6,11 @@ export interface User {
   email: string;
   name: string;
   role: 'user' | 'admin';
-  subscription: 'free' | 'pro' | 'enterprise';
+  subscription: 'free' | 'premium';
+  stripeCustomerId?: string;
+  subscriptionId?: string;
+  subscriptionStatus?: 'active' | 'canceled' | 'past_due' | 'unpaid';
+  subscriptionEndsAt?: string;
   avatar?: string;
 }
 
@@ -104,6 +108,9 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   setDarkMode: (dark: boolean) => void;
   
+  // Subscription actions
+  updateSubscription: (subscription: Partial<Pick<User, 'subscription' | 'stripeCustomerId' | 'subscriptionId' | 'subscriptionStatus' | 'subscriptionEndsAt'>>) => void;
+  
   // Legislators Page Actions
   setLegislatureLevel: (level: 'federal' | 'state') => void;
   setSelectedState: (state: string | null) => void;
@@ -138,7 +145,8 @@ export const useAppStore = create<AppState>()(
         email: 'demo@shadowcongress.com',
         name: 'Demo User',
         role: 'user',
-        subscription: 'pro'
+        subscription: 'free',
+        subscriptionStatus: undefined
       },
       isAuthenticated: true,
       sidebarOpen: false,
@@ -168,6 +176,12 @@ export const useAppStore = create<AppState>()(
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       setDarkMode: (darkMode) => set({ darkMode }),
+      
+      // Subscription actions
+      updateSubscription: (subscription) => 
+        set((state) => ({
+          user: state.user ? { ...state.user, ...subscription } : state.user
+        })),
       
       // Legislators Page Actions
       setLegislatureLevel: (legislatureLevel) => set({ legislatureLevel }),

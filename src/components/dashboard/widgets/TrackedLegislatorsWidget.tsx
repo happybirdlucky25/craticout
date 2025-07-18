@@ -18,38 +18,7 @@ interface TrackedLegislator {
   recent_activity: string;
 }
 
-// Mock data for demonstration
-const mockTrackedLegislators: TrackedLegislator[] = [
-  {
-    id: "1",
-    name: "John Smith",
-    party: "Democratic",
-    state: "CA",
-    chamber: "House",
-    district: "5",
-    photo: undefined,
-    recent_activity: "Introduced H.R. 1234"
-  },
-  {
-    id: "2",
-    name: "Jane Doe",
-    party: "Republican",
-    state: "TX",
-    chamber: "Senate",
-    photo: undefined,
-    recent_activity: "Voted on S. 567"
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    party: "Democratic",
-    state: "NY",
-    chamber: "House",
-    district: "3",
-    photo: undefined,
-    recent_activity: "Co-sponsored H.R. 890"
-  }
-];
+// No mock data - will use real tracked legislators from user preferences
 
 export function TrackedLegislatorsWidget() {
   const { user, isAuthenticated } = useAppStore();
@@ -64,9 +33,9 @@ export function TrackedLegislatorsWidget() {
       }
 
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 900));
-        setLegislators(mockTrackedLegislators);
+        // TODO: Fetch user's tracked legislators from Supabase
+        // For now, show empty state until user tracking is implemented
+        setLegislators([]);
       } catch (error) {
         console.error('Error loading tracked legislators:', error);
       } finally {

@@ -18,64 +18,7 @@ interface FeedItem {
   item_type: 'rss' | 'ad';
 }
 
-// Mock data for demonstration
-const mockFeedItems: FeedItem[] = [
-  {
-    id: "1",
-    title: "Senate Passes Bipartisan Infrastructure Bill",
-    summary: "The Senate voted 69-30 to pass the $1.2 trillion infrastructure package, sending it to the House for final approval.",
-    source: "Reuters",
-    url: "https://example.com/senate-infrastructure",
-    published_at: "2024-01-17T10:30:00Z",
-    tags: ["Infrastructure", "Senate", "Bipartisan"],
-    is_breaking: true,
-    item_type: 'rss'
-  },
-  {
-    id: "ad-1",
-    title: "Sponsored: Policy Research Tools",
-    summary: "Get comprehensive policy analysis tools for your organization. Advanced tracking and reporting features.",
-    source: "Advertisement",
-    url: "https://example.com/policy-tools",
-    published_at: "2024-01-17T09:00:00Z",
-    tags: ["Sponsored"],
-    is_breaking: false,
-    item_type: 'ad'
-  },
-  {
-    id: "2",
-    title: "House Committee Advances Climate Legislation",
-    summary: "The House Energy and Commerce Committee voted to advance sweeping climate legislation aimed at reducing carbon emissions by 50% by 2030.",
-    source: "The Hill",
-    url: "https://example.com/climate-legislation",
-    published_at: "2024-01-17T08:15:00Z",
-    tags: ["Climate", "Environment", "House"],
-    is_breaking: false,
-    item_type: 'rss'
-  },
-  {
-    id: "3",
-    title: "Supreme Court to Hear Healthcare Challenge",
-    summary: "The Supreme Court announced it will hear arguments in a case that could significantly impact healthcare access nationwide.",
-    source: "Associated Press",
-    url: "https://example.com/supreme-court-healthcare",
-    published_at: "2024-01-17T07:45:00Z",
-    tags: ["Supreme Court", "Healthcare", "Legal"],
-    is_breaking: false,
-    item_type: 'rss'
-  },
-  {
-    id: "4",
-    title: "New Education Funding Formula Proposed",
-    summary: "State legislators propose a new formula for education funding that would increase support for underserved districts.",
-    source: "Education Week",
-    url: "https://example.com/education-funding",
-    published_at: "2024-01-17T06:20:00Z",
-    tags: ["Education", "Funding", "State"],
-    is_breaking: false,
-    item_type: 'rss'
-  }
-];
+// No mock data - use real RSS feed from hooks
 
 export function NewsFeed() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -92,24 +35,15 @@ export function NewsFeed() {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const itemsPerPage = 5;
-      const startIndex = (pageNum - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const pageItems = mockFeedItems.slice(startIndex, endIndex);
-
-      if (refresh || pageNum === 1) {
-        setFeedItems(pageItems);
-      } else {
-        setFeedItems(prev => [...prev, ...pageItems]);
-      }
-
-      setHasMore(endIndex < mockFeedItems.length);
+      // TODO: Replace with real RSS feed API call to Supabase function
+      // For now, show empty state until real data is connected
+      setFeedItems([]);
+      setHasMore(false);
       setPage(pageNum);
     } catch (error) {
       console.error('Error loading feed items:', error);
+      setFeedItems([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -202,7 +136,18 @@ export function NewsFeed() {
 
       {/* Feed Items */}
       <div className="space-y-4">
-        {feedItems.map((item) => (
+        {feedItems.length === 0 && !loading ? (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">📰</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No News Available</h3>
+            <p className="text-gray-500 mb-4">News feed will appear here when connected to real data sources.</p>
+            <Button variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        ) : (
+          feedItems.map((item) => (
           <Card 
             key={item.id} 
             className={`cursor-pointer hover:shadow-md transition-shadow ${
@@ -250,7 +195,8 @@ export function NewsFeed() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Load More Button */}

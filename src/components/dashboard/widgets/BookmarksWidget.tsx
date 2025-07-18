@@ -12,27 +12,7 @@ interface BookmarkItem {
   url?: string;
 }
 
-const mockBookmarks: BookmarkItem[] = [
-  {
-    id: "1",
-    title: "Clean Energy Investment Bill",
-    type: 'bill',
-    saved_at: "2024-01-16T10:30:00Z"
-  },
-  {
-    id: "2",
-    title: "Sen. Elizabeth Warren",
-    type: 'legislator',
-    saved_at: "2024-01-15T14:20:00Z"
-  },
-  {
-    id: "3",
-    title: "Analysis: Healthcare Reform Impact",
-    type: 'article',
-    saved_at: "2024-01-14T09:15:00Z",
-    url: "https://example.com/healthcare-analysis"
-  }
-];
+// No mock data - will use real user bookmarks
 
 export function BookmarksWidget() {
   const { isAuthenticated } = useAppStore();
@@ -47,8 +27,8 @@ export function BookmarksWidget() {
       }
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 400));
-        setBookmarks(mockBookmarks);
+        // TODO: Fetch user bookmarks from Supabase
+        setBookmarks([]);
       } catch (error) {
         console.error('Error loading bookmarks:', error);
       } finally {

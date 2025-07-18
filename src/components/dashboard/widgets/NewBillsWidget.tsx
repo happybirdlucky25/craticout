@@ -15,24 +15,7 @@ interface NewBill {
   summary: string;
 }
 
-const mockNewBills: NewBill[] = [
-  {
-    id: "1",
-    title: "Digital Privacy Protection Act",
-    sponsor: "Rep. Sarah Johnson",
-    introduced_date: "2024-01-17T09:00:00Z",
-    chamber: "House",
-    summary: "Establishes comprehensive data privacy protections for consumers"
-  },
-  {
-    id: "2",
-    title: "Small Business Recovery Fund",
-    sponsor: "Sen. Michael Chen",
-    introduced_date: "2024-01-16T16:30:00Z",
-    chamber: "Senate",
-    summary: "Provides financial assistance to small businesses affected by economic disruption"
-  }
-];
+// No mock data - will use real recent bills from database
 
 export function NewBillsWidget() {
   const { isAuthenticated } = useAppStore();
@@ -42,8 +25,8 @@ export function NewBillsWidget() {
   useEffect(() => {
     const loadNewBills = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 700));
-        setBills(mockNewBills);
+        // TODO: Fetch recent bills from Supabase using useBills hook
+        setBills([]);
       } catch (error) {
         console.error('Error loading new bills:', error);
       } finally {

@@ -21,7 +21,7 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Welcome to ShadowCongress</h1>
+          <h1 className="text-2xl font-bold mb-4">Welcome to PoliUX</h1>
           <p className="text-muted-foreground mb-6">Please sign in to access your dashboard</p>
           <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Sign In

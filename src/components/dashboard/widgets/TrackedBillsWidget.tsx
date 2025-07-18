@@ -16,36 +16,7 @@ interface TrackedBill {
   chamber: string;
 }
 
-// Mock data for demonstration
-const mockTrackedBills: TrackedBill[] = [
-  {
-    id: "1",
-    title: "Infrastructure Investment and Jobs Act",
-    status: "Passed",
-    last_action: "Signed into law",
-    last_action_date: "2024-01-15T14:30:00Z",
-    sponsor: "Rep. Johnson",
-    chamber: "House"
-  },
-  {
-    id: "2",
-    title: "Climate Action and Green Jobs Bill",
-    status: "In Committee",
-    last_action: "Referred to Committee on Energy and Commerce",
-    last_action_date: "2024-01-14T09:15:00Z",
-    sponsor: "Sen. Williams",
-    chamber: "Senate"
-  },
-  {
-    id: "3",
-    title: "Education Funding Reform Act",
-    status: "Under Review",
-    last_action: "Markup scheduled",
-    last_action_date: "2024-01-13T16:45:00Z",
-    sponsor: "Rep. Davis",
-    chamber: "House"
-  }
-];
+// No mock data - will use real tracked bills from user preferences
 
 export function TrackedBillsWidget() {
   const { user, isAuthenticated } = useAppStore();
@@ -60,9 +31,9 @@ export function TrackedBillsWidget() {
       }
 
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setBills(mockTrackedBills);
+        // TODO: Fetch user's tracked bills from Supabase
+        // For now, show empty state until user tracking is implemented
+        setBills([]);
       } catch (error) {
         console.error('Error loading tracked bills:', error);
       } finally {

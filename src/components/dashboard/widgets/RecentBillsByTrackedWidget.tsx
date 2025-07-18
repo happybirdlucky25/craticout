@@ -14,24 +14,7 @@ interface RecentBill {
   chamber: string;
 }
 
-const mockRecentBills: RecentBill[] = [
-  {
-    id: "1",
-    title: "Green Infrastructure Development Act",
-    sponsor: "Rep. John Smith",
-    introduced_date: "2024-01-16T10:00:00Z",
-    status: "Introduced",
-    chamber: "House"
-  },
-  {
-    id: "2",
-    title: "Education Technology Enhancement Bill",
-    sponsor: "Sen. Jane Doe",
-    introduced_date: "2024-01-15T14:30:00Z",
-    status: "Referred to Committee",
-    chamber: "Senate"
-  }
-];
+// No mock data - will use real bills related to tracked items
 
 export function RecentBillsByTrackedWidget() {
   const { isAuthenticated } = useAppStore();
@@ -46,8 +29,8 @@ export function RecentBillsByTrackedWidget() {
       }
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        setBills(mockRecentBills);
+        // TODO: Fetch bills related to user's tracked items from Supabase
+        setBills([]);
       } catch (error) {
         console.error('Error loading recent bills:', error);
       } finally {

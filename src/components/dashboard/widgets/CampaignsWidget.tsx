@@ -18,39 +18,7 @@ interface Campaign {
   status: 'active' | 'paused' | 'completed';
 }
 
-// Mock data for demonstration
-const mockCampaigns: Campaign[] = [
-  {
-    id: "1",
-    name: "Climate Action Initiative",
-    description: "Tracking climate-related legislation across all states",
-    bill_count: 12,
-    legislator_count: 8,
-    progress: 75,
-    updated_at: "2024-01-16T10:30:00Z",
-    status: 'active'
-  },
-  {
-    id: "2",
-    name: "Education Reform Watch",
-    description: "Monitoring education funding and policy changes",
-    bill_count: 8,
-    legislator_count: 5,
-    progress: 60,
-    updated_at: "2024-01-15T14:20:00Z",
-    status: 'active'
-  },
-  {
-    id: "3",
-    name: "Healthcare Access Project",
-    description: "Following healthcare accessibility legislation",
-    bill_count: 6,
-    legislator_count: 3,
-    progress: 45,
-    updated_at: "2024-01-14T09:15:00Z",
-    status: 'paused'
-  }
-];
+// No mock data - will use real user campaigns from database
 
 export function CampaignsWidget() {
   const { user, isAuthenticated } = useAppStore();
@@ -65,9 +33,9 @@ export function CampaignsWidget() {
       }
 
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 700));
-        setCampaigns(mockCampaigns);
+        // TODO: Fetch user's campaigns from Supabase
+        // For now, show empty state until campaign system is implemented
+        setCampaigns([]);
       } catch (error) {
         console.error('Error loading campaigns:', error);
       } finally {

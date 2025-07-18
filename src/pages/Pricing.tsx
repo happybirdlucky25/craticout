@@ -17,8 +17,17 @@ const Pricing = () => {
   const handleUpgrade = async () => {
     if (!stripe) {
       toast({
-        title: "Error",
-        description: "Stripe is not available. Please try again later.",
+        title: "Payment Unavailable",
+        description: "Payment system is not configured. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!stripeConfig.PREMIUM_PRICE_ID) {
+      toast({
+        title: "Configuration Error",
+        description: "Pricing not configured. Please contact support.",
         variant: "destructive",
       });
       return;

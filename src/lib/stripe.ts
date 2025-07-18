@@ -4,13 +4,15 @@ import { loadStripe } from '@stripe/stripe-js';
 // This is safe to expose in frontend code
 const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-// Initialize Stripe
-export const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe with error handling
+export const stripePromise = STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
 
 // Stripe configuration
 export const stripeConfig = {
   // Your Premium plan price ID from Stripe Dashboard
-  PREMIUM_PRICE_ID: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID,
+  PREMIUM_PRICE_ID: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID || '',
   
   // Success/cancel URLs
   SUCCESS_URL: `${window.location.origin}/checkout/success?success=true&session_id={CHECKOUT_SESSION_ID}`,

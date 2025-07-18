@@ -29,7 +29,7 @@ const Home = () => {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-5xl font-bold mb-4">
-            Shadow Congress Intelligence
+            PoliUX Intelligence
           </h1>
           <p className="text-xl mb-8 max-w-3xl mx-auto">
             Real-time tracking of congressional bills, legislators, and legislative activity.
@@ -124,7 +124,7 @@ const Home = () => {
         {/* How It Works */}
         <div className="text-center space-y-8">
           <div>
-            <h2 className="text-3xl font-bold mb-4">How Shadow Congress Works</h2>
+            <h2 className="text-3xl font-bold mb-4">How PoliUX Works</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Comprehensive legislative intelligence powered by real congressional data
             </p>

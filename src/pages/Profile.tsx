@@ -33,7 +33,7 @@ const ProfileHeader = () => (
     </div>
     <div>
       <h1 className="text-2xl font-semibold text-gray-900">Profile</h1>
-      <p className="text-gray-600">Manage your Shadow Congress account</p>
+      <p className="text-gray-600">Manage your PoliUX account</p>
     </div>
   </header>
 );
@@ -148,7 +148,7 @@ export default function Profile() {
       id: 'history',
       icon: MessageSquare,
       title: "Chat History",
-      description: "View your previous conversations with Shadow Congress AI.",
+      description: "View your previous conversations with PoliUX AI.",
       buttonText: "View History",
       variant: 'default',
       onClick: handleChatHistory,
@@ -157,7 +157,7 @@ export default function Profile() {
       id: 'preferences',
       icon: Settings,
       title: "Preferences",
-      description: "Customize your Shadow Congress experience.",
+      description: "Customize your PoliUX experience.",
       buttonText: "Manage Preferences",
       variant: 'default',
       onClick: handlePreferences,
@@ -166,7 +166,7 @@ export default function Profile() {
       id: 'signout',
       icon: LogOut,
       title: "Sign Out",
-      description: "Sign out of your Shadow Congress account.",
+      description: "Sign out of your PoliUX account.",
       buttonText: "Sign Out",
       variant: 'danger',
       onClick: handleSignOut,

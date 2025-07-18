@@ -1,66 +1,23 @@
-import { useState } from "react";
-import { Button } from "../components/ui/button";
+import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { useToast } from "../components/ui/use-toast";
-import { Check, X, Star, Zap, Loader2 } from "lucide-react";
-import { useStripe } from "@stripe/react-stripe-js";
-import { createCheckoutSession, stripeConfig } from "../lib/stripe";
-import { useAppStore } from "../store";
+import { Check, X, Star, Zap } from "lucide-react";
 
 const Pricing = () => {
-  const [loading, setLoading] = useState(false);
-  const stripe = useStripe();
-  const { toast } = useToast();
-  const { user } = useAppStore();
+  // Load Stripe Buy Button script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/buy-button.js';
+    script.async = true;
+    document.head.appendChild(script);
 
-  const handleUpgrade = async () => {
-    if (!stripe) {
-      toast({
-        title: "Payment Unavailable",
-        description: "Payment system is not configured. Please contact support.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!stripeConfig.PREMIUM_PRICE_ID) {
-      toast({
-        title: "Configuration Error",
-        description: "Pricing not configured. Please contact support.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Create checkout session with your backend
-      const sessionId = await createCheckoutSession(
-        stripeConfig.PREMIUM_PRICE_ID,
-        user?.stripeCustomerId
-      );
-
-      // Redirect to Stripe Checkout
-      const { error } = await stripe.redirectToCheckout({
-        sessionId,
-      });
-
-      if (error) {
-        throw error;
+    return () => {
+      // Cleanup script on unmount
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
       }
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start checkout. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+  }, []);
 
   const features = [
     {
@@ -133,7 +90,7 @@ const Pricing = () => {
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-gray-900">
-            Upgrade to Premium
+            Upgrade to PoliUX Premium
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Unlock the full power of legislative intelligence with unlimited access to AI analysis, 
@@ -182,9 +139,11 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
-              <Button variant="outline" className="w-full" disabled>
-                Current Plan
-              </Button>
+              <div className="pt-4">
+                <div className="w-full py-2 px-4 bg-gray-100 text-gray-600 text-center rounded font-medium">
+                  Current Plan
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -223,22 +182,20 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
-              <Button 
-                onClick={handleUpgrade} 
-                disabled={loading || user?.subscription === 'premium'}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : user?.subscription === 'premium' ? (
-                  'Current Plan'
-                ) : (
-                  'Upgrade with Stripe'
-                )}
-              </Button>
+              
+              {/* Stripe Buy Button */}
+              <div className="pt-4">
+                <div 
+                  dangerouslySetInnerHTML={{
+                    __html: `
+                      <stripe-buy-button
+                        buy-button-id="buy_btn_1Rm4fVBSTJMPcAXmGB2UNH2W"
+                        publishable-key="pk_live_51QpgqUBSTJMPcAXmHhKsxRpgzqd6xoPeNHtzW0NlFivGTqrfVbpLu5nnYvJUTZqTuuIiRx3ZG1Zh7ZvvUeMCr8M900mokGFUPB"
+                      ></stripe-buy-button>
+                    `
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -246,7 +203,7 @@ const Pricing = () => {
         {/* Feature Highlights */}
         <div className="bg-white rounded-lg p-8 shadow-sm">
           <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">
-            Why Choose Premium?
+            Why Choose PoliUX Premium?
           </h3>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center">
@@ -316,25 +273,18 @@ const Pricing = () => {
             Ready to upgrade your legislative intelligence?
           </h3>
           <p className="text-gray-600 mb-6">
-            Join thousands of professionals who rely on ShadowCongress Premium for their legislative tracking needs.
+            Join thousands of professionals who rely on PoliUX Premium for their legislative tracking needs.
           </p>
-          <Button 
-            onClick={handleUpgrade} 
-            disabled={loading || user?.subscription === 'premium'}
-            size="lg" 
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : user?.subscription === 'premium' ? (
-              'You are Premium!'
-            ) : (
-              'Start Premium Today - $17/month'
-            )}
-          </Button>
+          <div 
+            dangerouslySetInnerHTML={{
+              __html: `
+                <stripe-buy-button
+                  buy-button-id="buy_btn_1Rm4fVBSTJMPcAXmGB2UNH2W"
+                  publishable-key="pk_live_51QpgqUBSTJMPcAXmHhKsxRpgzqd6xoPeNHtzW0NlFivGTqrfVbpLu5nnYvJUTZqTuuIiRx3ZG1Zh7ZvvUeMCr8M900mokGFUPB"
+                ></stripe-buy-button>
+              `
+            }}
+          />
         </div>
       </div>
     </div>

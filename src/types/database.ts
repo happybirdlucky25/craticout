@@ -1,5 +1,5 @@
-// 🏛️ Shadow Congress Database Types
-// Comprehensive TypeScript interfaces for all database tables
+// 🏛️ PoliUX Database Types
+// Comprehensive TypeScript interfaces matching exact database schema
 
 export interface Bill {
   bill_id: string;
@@ -18,6 +18,39 @@ export interface Bill {
   state_link?: string;
   full_bill_text?: string;
   change_hash?: string;
+}
+
+export interface Document {
+  id: number;
+  content?: string;
+  metadata?: Record<string, any>;
+  embedding?: any; // Vector embedding type
+}
+
+export interface DocumentLeg {
+  document_id: string;
+  bill_id?: string;
+  document_type?: string;
+  document_size?: number;
+  document_mime?: string;
+  document_desc?: string;
+  url?: string;
+  state_link?: string;
+}
+
+export interface History {
+  history_id: number;
+  bill_id?: string;
+  date?: string;
+  chamber?: string;
+  sequence?: number;
+  action?: string;
+}
+
+export interface N8nChatHistory {
+  id: number;
+  session_id: string;
+  message: Record<string, any>;
 }
 
 export interface Person {
@@ -41,15 +74,6 @@ export interface Person {
   committee_id?: string;
 }
 
-export interface History {
-  history_id: number;
-  bill_id?: string;
-  date?: string;
-  chamber?: string;
-  sequence?: number;
-  action?: string;
-}
-
 export interface RollCall {
   roll_call_id: string;
   bill_id?: string;
@@ -63,14 +87,6 @@ export interface RollCall {
   total?: number;
 }
 
-export interface Vote {
-  vote_id: number;
-  roll_call_id?: string;
-  people_id?: string;
-  vote?: string;
-  vote_desc?: string;
-}
-
 export interface Sponsor {
   sponsor_id: number;
   bill_id?: string;
@@ -79,28 +95,12 @@ export interface Sponsor {
   has_bill_id?: boolean;
 }
 
-export interface Document {
-  id: number;
-  content?: string;
-  metadata?: Record<string, any>;
-  embedding?: any; // Vector embedding type
-}
-
-export interface DocumentLeg {
-  document_id: string;
-  bill_id?: string;
-  document_type?: string;
-  document_size?: number;
-  document_mime?: string;
-  document_desc?: string;
-  url?: string;
-  state_link?: string;
-}
-
-export interface ChatHistory {
-  id: number;
-  session_id: string;
-  message: Record<string, any>;
+export interface Vote {
+  vote_id: number;
+  roll_call_id?: string;
+  people_id?: string;
+  vote?: string;
+  vote_desc?: string;
 }
 
 // 🔗 Relationship Types for Joins

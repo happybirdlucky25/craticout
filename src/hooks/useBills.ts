@@ -1,6 +1,7 @@
 // 🏛️ Bills Data Fetching Hook
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { analyzeSearchTerm, generateBillNumberSearchTerms } from '@/utils/billNumberFormatter';
 import type { 
   Bill, 
   BillWithSponsors, 
@@ -47,7 +48,23 @@ export const useBills = (filters: BillFilters = {}, page = 1, perPage = 20) => {
         }
 
         if (filters.search_term) {
-          query = query.or(`title.ilike.%${filters.search_term}%,description.ilike.%${filters.search_term}%,bill_number.ilike.%${filters.search_term}%`);
+          const searchAnalysis = analyzeSearchTerm(filters.search_term);
+          
+          if (searchAnalysis.searchType === 'bill_number') {
+            // Pure bill number search - search only bill_number column with all variants
+            const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
+            query = query.or(billNumberTerms);
+          } else if (searchAnalysis.searchType === 'mixed') {
+            // Mixed search - search all columns with original term plus bill number variants
+            const allTerms = searchAnalysis.searchTerms;
+            const searchConditions = allTerms.map(term => 
+              `title.ilike.%${term}%,description.ilike.%${term}%,bill_number.ilike.%${term}%`
+            ).join(',');
+            query = query.or(searchConditions);
+          } else {
+            // Text search - search title and description primarily, but also check bill_number
+            query = query.or(`title.ilike.%${filters.search_term}%,description.ilike.%${filters.search_term}%,bill_number.ilike.%${filters.search_term}%`);
+          }
         }
 
         if (filters.session_id) {
@@ -324,7 +341,8 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
           setLoading(true);
           setError(null);
 
-          const { data: bills, error } = await supabase
+          const searchAnalysis = analyzeSearchTerm(searchTerm);
+          let query = supabase
             .from('bills')
             .select(`
               bill_id,
@@ -333,9 +351,25 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
               status,
               description,
               committee
-            `)
-            .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`)
-            .limit(20);
+            `);
+
+          if (searchAnalysis.searchType === 'bill_number') {
+            // Pure bill number search
+            const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
+            query = query.or(billNumberTerms);
+          } else if (searchAnalysis.searchType === 'mixed') {
+            // Mixed search
+            const allTerms = searchAnalysis.searchTerms;
+            const searchConditions = allTerms.map(term => 
+              `title.ilike.%${term}%,description.ilike.%${term}%,bill_number.ilike.%${term}%`
+            ).join(',');
+            query = query.or(searchConditions);
+          } else {
+            // Text search
+            query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`);
+          }
+
+          const { data: bills, error } = await query.limit(20);
 
           if (error) throw error;
           setData(bills || []);

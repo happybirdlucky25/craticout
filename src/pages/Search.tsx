@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useBills, useBillStatuses, useBillCommittees } from "@/hooks/useBills";
+import { formatBillNumber, isBillNumber } from "@/utils/billNumberFormatter";
 import type { BillFilters } from "@/types/database";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -102,7 +103,7 @@ const SearchBar = ({
       <div className="relative">
         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search bills by title, number (e.g. H.R. 1234), or keywords..."
+          placeholder="Search bills by title, keywords, or bill number (e.g. HR123, H.R. 1234, SJR45)..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onSearch()}
@@ -205,7 +206,7 @@ const BillCard = ({
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {bill.bill_number || 'Unknown'}
+              {formatBillNumber(bill.bill_number)}
             </Badge>
             <Badge className={`text-xs ${getStatusColor(bill.status || '')}`}>
               {bill.status || 'Unknown'}

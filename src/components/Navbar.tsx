@@ -23,6 +23,7 @@ const Navbar = () => {
   const navLinks = [
     { to: "/", label: "Dashboard" },
     { to: "/search", label: "Search" },
+    { to: "/tracked", label: "Tracked" },
     { to: "/reports", label: "Reports" },
     { to: "/campaigns", label: "Campaigns" },
     { to: "/legislators", label: "Legislators" },

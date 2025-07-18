@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { formatBillNumber } from "@/utils/billNumberFormatter";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
@@ -155,7 +156,7 @@ const BillHeader = ({ bill }: { bill: any }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="text-sm">
-            {bill.bill_number}
+            {formatBillNumber(bill.bill_number)}
           </Badge>
           <Badge className={`${getStatusColor(bill.status)} border`}>
             {bill.status}
@@ -227,7 +228,7 @@ const TrackBillModal = ({ isOpen, onClose, onConfirm, bill }: any) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Track {bill.bill_number}</DialogTitle>
+          <DialogTitle>Track {formatBillNumber(bill.bill_number)}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">

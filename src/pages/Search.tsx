@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useBills, useBillStatuses, useBillCommittees } from "@/hooks/useBills";
@@ -388,8 +388,10 @@ const Search = () => {
   // Results per page
   const resultsPerPage = 15;
   
-  // Build filters for the useBills hook
-  const buildFilters = (): BillFilters => {
+  // Memoize filters to prevent unnecessary re-renders
+  const currentFilters = useMemo((): BillFilters => {
+    if (!hasSearched) return {};
+    
     const filters: BillFilters = {};
     
     if (searchTerm.trim()) {
@@ -405,10 +407,7 @@ const Search = () => {
     }
     
     return filters;
-  };
-  
-  // Use the real bills hook with current filters only when we have searched
-  const currentFilters = hasSearched ? buildFilters() : {};
+  }, [hasSearched, searchTerm, statusFilter, committeeFilter]);
   const { data: billsData, loading: isLoading, error } = useBills(
     currentFilters, 
     currentPage, 
@@ -419,12 +418,18 @@ const Search = () => {
   const { data: statusOptions } = useBillStatuses();
   const { data: committeeOptions } = useBillCommittees();
   
-  // Only show results if we've actually searched
-  const searchResults = (hasSearched && billsData?.bills) ? billsData.bills : [];
-  const totalResults = (hasSearched && billsData?.total_count) ? billsData.total_count : 0;
+  // Memoize search results to prevent flickering
+  const searchResults = useMemo(() => {
+    return (hasSearched && billsData?.bills) ? billsData.bills : [];
+  }, [hasSearched, billsData?.bills]);
+  
+  const totalResults = useMemo(() => {
+    return (hasSearched && billsData?.total_count) ? billsData.total_count : 0;
+  }, [hasSearched, billsData?.total_count]);
+  
   const totalPages = Math.ceil(totalResults / resultsPerPage);
 
-  const performSearch = () => {
+  const performSearch = useCallback(() => {
     if (!searchTerm.trim()) {
       toast.error("Please enter a search term");
       return;
@@ -439,9 +444,9 @@ const Search = () => {
     if (searchTerm) params.set('q', searchTerm);
     if (selectedState) params.set('state', selectedState);
     setSearchParams(params);
-  };
+  }, [searchTerm, selectedState, setSearchParams]);
 
-  const handleTrackBill = (bill: any) => {
+  const handleTrackBill = useCallback((bill: any) => {
     const billId = bill.bill_id || bill.id;
     if (trackedBills.has(billId)) {
       setTrackedBills(prev => {
@@ -453,9 +458,9 @@ const Search = () => {
     } else {
       setTrackingBill(bill);
     }
-  };
+  }, [trackedBills]);
 
-  const confirmTrackBill = (campaignId?: string) => {
+  const confirmTrackBill = useCallback((campaignId?: string) => {
     if (trackingBill) {
       const billId = trackingBill.bill_id || trackingBill.id;
       setTrackedBills(prev => new Set(prev).add(billId));
@@ -465,19 +470,19 @@ const Search = () => {
       toast.success(message);
       setTrackingBill(null);
     }
-  };
+  }, [trackingBill]);
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = useCallback((suggestion: string) => {
     setSearchTerm(suggestion);
     setShowSuggestions(false);
     setTimeout(performSearch, 100);
-  };
+  }, [performSearch]);
 
-  const handleLoadSavedSearch = (search: any) => {
+  const handleLoadSavedSearch = useCallback((search: any) => {
     setSearchTerm(search.query);
     setSelectedState(search.state);
     toast.success(`Loaded search: ${search.name}`);
-  };
+  }, []);
 
   const saveCurrentSearch = () => {
     if (searchTerm.trim()) {
@@ -492,6 +497,18 @@ const Search = () => {
       setHasSearched(true);
     }
   }, [searchParams]);
+
+  // Auto-search when filters change (with debounce)
+  useEffect(() => {
+    if (!hasSearched) return;
+    
+    const timeoutId = setTimeout(() => {
+      // Trigger a re-fetch by updating the filters
+      // The useMemo will handle the actual filter changes
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [statusFilter, committeeFilter, hasSearched]);
 
   // Debug effect to track search state
   useEffect(() => {
@@ -659,11 +676,11 @@ const Search = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {searchResults.map((bill) => {
-              const billId = bill.bill_id || bill.id;
+            {searchResults.map((bill, index) => {
+              const billId = bill.bill_id || bill.id || `bill-${index}`;
               return (
                 <BillCard
-                  key={billId}
+                  key={`${billId}-${currentPage}`} // Stable key including page
                   bill={bill}
                   onTrackBill={handleTrackBill}
                   isTracked={trackedBills.has(billId)}

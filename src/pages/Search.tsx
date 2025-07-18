@@ -407,7 +407,7 @@ const Search = () => {
     return filters;
   };
   
-  // Use the real bills hook with current filters
+  // Use the real bills hook with current filters only when we have searched
   const currentFilters = hasSearched ? buildFilters() : {};
   const { data: billsData, loading: isLoading, error } = useBills(
     currentFilters, 
@@ -419,8 +419,9 @@ const Search = () => {
   const { data: statusOptions } = useBillStatuses();
   const { data: committeeOptions } = useBillCommittees();
   
-  const searchResults = billsData?.bills || [];
-  const totalResults = billsData?.total_count || 0;
+  // Only show results if we've actually searched
+  const searchResults = (hasSearched && billsData?.bills) ? billsData.bills : [];
+  const totalResults = (hasSearched && billsData?.total_count) ? billsData.total_count : 0;
   const totalPages = Math.ceil(totalResults / resultsPerPage);
 
   const performSearch = () => {
@@ -491,6 +492,19 @@ const Search = () => {
       setHasSearched(true);
     }
   }, [searchParams]);
+
+  // Debug effect to track search state
+  useEffect(() => {
+    console.log('Search Debug:', {
+      hasSearched,
+      searchTerm,
+      searchResults: searchResults.length,
+      isLoading,
+      totalResults,
+      currentFilters,
+      billsData: billsData?.bills?.length || 0
+    });
+  }, [hasSearched, searchTerm, searchResults, isLoading, totalResults, currentFilters, billsData]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -605,7 +619,7 @@ const Search = () => {
       </Card>
 
       {/* Search Results */}
-      {isLoading ? (
+      {hasSearched && isLoading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 15 }).map((_, i) => (
             <Card key={i}>
@@ -636,7 +650,7 @@ const Search = () => {
             Try Again
           </Button>
         </div>
-      ) : searchResults.length > 0 ? (
+      ) : hasSearched && searchResults.length > 0 ? (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
@@ -664,7 +678,7 @@ const Search = () => {
             onPageChange={setCurrentPage}
           />
         </div>
-      ) : searchTerm ? (
+      ) : hasSearched && searchTerm ? (
         <div className="text-center py-12">
           <SearchIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No bills found</h3>

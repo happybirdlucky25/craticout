@@ -1,202 +1,253 @@
-import { useState } from "react";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { Badge } from "../components/ui/badge";
-import { Camera, User, Mail, Calendar, Shield } from "lucide-react";
+import { Layout } from "@/components/layout/Layout";
+import { User, MessageSquare, Settings, LogOut, LucideIcon } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-const Profile = () => {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  
-  // Mock user data - in real app this would come from your auth/user store
-  const user = {
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    joinDate: "January 2024",
-    subscriptionStatus: "Premium", // or "Free"
-    lastActive: "2 hours ago"
+// --- Data Definitions (for a data-driven UI) ---
+
+// Define the shape of an action item
+interface ActionItem {
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  buttonText: string;
+  variant: 'default' | 'danger';
+  onClick: () => void; // Placeholder for future functionality
+}
+
+
+
+
+// --- Reusable Sub-components (in a real app, each would be in its own file) ---
+
+/**
+ * ProfileHeader: Displays the main user avatar and title section.
+ */
+const ProfileHeader = () => (
+  <header className="flex items-center mb-8">
+    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+      <User className="w-8 h-8 text-gray-600" />
+    </div>
+    <div>
+      <h1 className="text-2xl font-semibold text-gray-900">Profile</h1>
+      <p className="text-gray-600">Manage your Shadow Congress account</p>
+    </div>
+  </header>
+);
+
+/**
+ * ActionCard: A versatile card for user actions.
+ * It supports different color schemes via the 'variant' prop.
+ */
+interface ActionCardProps extends Omit<ActionItem, 'id'> {}
+
+const ActionCard = ({ icon: Icon, title, description, buttonText, onClick, variant }: ActionCardProps) => {
+  // Define styles based on the variant
+  const theme = {
+    default: {
+      bg: "bg-gray-50",
+      iconColor: "text-gray-600",
+      titleColor: "text-gray-900",
+      textColor: "text-gray-600",
+      buttonClasses: "bg-black text-white hover:bg-gray-800",
+    },
+    danger: {
+      bg: "bg-red-50",
+      iconColor: "text-red-600",
+      titleColor: "text-red-900",
+      textColor: "text-red-700",
+      buttonClasses: "bg-red-600 text-white hover:bg-red-700",
+    },
   };
 
-  const handleAvatarChange = () => {
-    // Placeholder for file picker - will integrate with edge function
-    console.log("Avatar change triggered - will implement edge function integration");
-    // For demo purposes, you could set a placeholder image
-    // setAvatarUrl("https://placeholder-avatar-url.com");
-  };
+  const currentTheme = theme[variant];
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
-        {/* Breadcrumb */}
-        <nav className="mb-8">
-          <ol className="flex items-center space-x-2 text-sm text-gray-500">
-            <li>
-              <a href="/" className="hover:text-gray-700">Dashboard</a>
-            </li>
-            <li className="flex items-center">
-              <span className="mx-2">/</span>
-              <span className="text-gray-900">Profile</span>
-            </li>
-          </ol>
-        </nav>
-
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile</h1>
-          <p className="text-gray-600">Manage your account settings and preferences</p>
-        </div>
-
-        {/* Profile Overview Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Account Overview
-            </CardTitle>
-            <CardDescription>
-              Your account information and subscription status
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Avatar Section */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarUrl || undefined} alt="Profile picture" />
-                  <AvatarFallback className="text-lg">
-                    {user.firstName[0]}{user.lastName[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                  onClick={handleAvatarChange}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-1">
-                <Button variant="outline" onClick={handleAvatarChange}>
-                  Change Photo
-                </Button>
-                <p className="text-sm text-gray-500">
-                  JPG, PNG or GIF. Max size 2MB.
-                </p>
-              </div>
-            </div>
-
-            {/* User Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Full Name</label>
-                  <div className="mt-1 p-3 bg-gray-50 border rounded-md">
-                    {user.firstName} {user.lastName}
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    Email Address
-                  </label>
-                  <div className="mt-1 p-3 bg-gray-50 border rounded-md">
-                    {user.email}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Member Since
-                  </label>
-                  <div className="mt-1 p-3 bg-gray-50 border rounded-md">
-                    {user.joinDate}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Subscription Status
-                  </label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge variant={user.subscriptionStatus === "Premium" ? "default" : "secondary"}>
-                      {user.subscriptionStatus}
-                    </Badge>
-                    {user.subscriptionStatus === "Free" && (
-                      <Button variant="link" size="sm" className="p-0 h-auto">
-                        Upgrade to Premium
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Account Stats Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Activity</CardTitle>
-            <CardDescription>
-              Your recent activity and usage statistics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">0</div>
-                <div className="text-sm text-blue-600">Bills Tracked</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">0</div>
-                <div className="text-sm text-green-600">Legislators Followed</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">0</div>
-                <div className="text-sm text-purple-600">Reports Generated</div>
-              </div>
-            </div>
-            <div className="mt-4 text-sm text-gray-500">
-              Last active: {user.lastActive}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common account management tasks
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Button variant="outline" className="justify-start">
-                Update Account Settings
-              </Button>
-              <Button variant="outline" className="justify-start">
-                Manage Notifications
-              </Button>
-              <Button variant="outline" className="justify-start">
-                View Billing History
-              </Button>
-              <Button variant="outline" className="justify-start">
-                Download Data Export
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+    <section className={`${currentTheme.bg} rounded-lg p-6 flex flex-col`}>
+      <div className="flex items-center mb-4">
+        <Icon className={`w-5 h-5 ${currentTheme.iconColor} mr-2`} />
+        <h3 className={`text-lg font-medium ${currentTheme.titleColor}`}>{title}</h3>
       </div>
-    </div>
+      <p className={`${currentTheme.textColor} mb-4 flex-grow`}>{description}</p>
+      <button
+        onClick={onClick}
+        className={`px-4 py-2 rounded transition-colors self-start ${currentTheme.buttonClasses}`}
+      >
+        {buttonText}
+      </button>
+    </section>
   );
 };
 
-export default Profile;
+
+/**
+ * InfoCard: Displays key-value information for the user's account.
+ */
+interface InfoCardProps {
+    title: string;
+    data: Record<string, string>;
+}
+const InfoCard = ({ title, data }: InfoCardProps) => (
+    <section className="bg-gray-50 rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{title}</h3>
+        <div className="space-y-3">
+            {Object.entries(data).map(([key, value]) => (
+                <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700">{key}</label>
+                    <p className="text-gray-900">{value}</p>
+                </div>
+            ))}
+        </div>
+    </section>
+);
+
+
+// --- Main Page Component ---
+export default function Profile() {
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Get current user
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+
+    getCurrentUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const handleChatHistory = () => {
+    navigate('/history');
+  };
+
+  const handlePreferences = () => {
+    navigate('/preferences');
+  };
+
+  // Array of actions with real functionality
+  const actionItems: ActionItem[] = [
+    {
+      id: 'history',
+      icon: MessageSquare,
+      title: "Chat History",
+      description: "View your previous conversations with Shadow Congress AI.",
+      buttonText: "View History",
+      variant: 'default',
+      onClick: handleChatHistory,
+    },
+    {
+      id: 'preferences',
+      icon: Settings,
+      title: "Preferences",
+      description: "Customize your Shadow Congress experience.",
+      buttonText: "Manage Preferences",
+      variant: 'default',
+      onClick: handlePreferences,
+    },
+    {
+      id: 'signout',
+      icon: LogOut,
+      title: "Sign Out",
+      description: "Sign out of your Shadow Congress account.",
+      buttonText: "Sign Out",
+      variant: 'danger',
+      onClick: handleSignOut,
+    },
+  ];
+
+  // Real user account information
+  const accountInfo = {
+    Email: user?.email || 'Not available',
+    "Member Since": user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    }) : 'Unknown',
+    "User ID": user?.id || 'Not available',
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <main className="min-h-screen bg-gray-100 p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              <div className="flex items-center justify-center h-64">
+                <div className="text-gray-600">Loading profile...</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Layout>
+        <main className="min-h-screen bg-gray-100 p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="text-gray-600 mb-4">Please sign in to view your profile.</div>
+                  <button 
+                    onClick={() => navigate('/auth')}
+                    className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <main className="min-h-screen bg-gray-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm p-8">
+            <ProfileHeader />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <InfoCard title="Account Information" data={accountInfo} />
+                <ActionCard {...actionItems.find(item => item.id === 'signout')!} />
+              </div>
+              
+              {/* Right Column */}
+              <div className="space-y-6">
+                 {actionItems
+                    .filter(item => item.id !== 'signout')
+                    .map(item => <ActionCard key={item.id} {...item} />)
+                 }
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </Layout>
+  );
+}

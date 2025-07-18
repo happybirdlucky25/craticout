@@ -1,63 +1,53 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Skeleton } from "../components/ui/skeleton";
 import { 
-  Search, 
-  FileText, 
-  Users, 
   TrendingUp, 
+  Users, 
+  FileText, 
   Vote, 
   Calendar, 
   ArrowRight,
   Activity,
   Building2
 } from "lucide-react";
-import { useDashboardStats, useRecentActivity, useTrendingBills, useActiveLegislators } from "@/hooks/useDashboard";
+import { useDashboardStats, useRecentActivity, useTrendingBills, useActiveLegislators } from "../hooks/useDashboard";
+import { Link } from "react-router-dom";
 
-const Home = () => {
-  const navigate = useNavigate();
+const RealDataDashboard = () => {
   const { data: stats, loading: statsLoading } = useDashboardStats();
   const { data: recentActivity, loading: activityLoading } = useRecentActivity(5);
   const { data: trendingBills, loading: billsLoading } = useTrendingBills(5);
   const { data: activeLegislators, loading: legislatorsLoading } = useActiveLegislators(5);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-bold mb-4">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-gray-900">
             Shadow Congress Intelligence
           </h1>
-          <p className="text-xl mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Real-time tracking of congressional bills, legislators, and legislative activity.
-            AI-powered insights for informed civic engagement.
+            Ask questions, get AI-powered insights, and stay informed about what's happening in Congress.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Button 
-              size="lg" 
-              variant="secondary"
-              onClick={() => navigate("/search")}
-              className="text-lg px-8 py-3"
-            >
-              Search Bills & Legislators
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/dashboard")}
-              className="text-lg px-8 py-3 text-white border-white hover:bg-white hover:text-purple-600"
-            >
-              View Dashboard
-            </Button>
+            <Link to="/search">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+                Search Bills & Legislators
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/reports">
+              <Button variant="outline" size="lg">
+                View Reports
+              </Button>
+            </Link>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-12 space-y-12">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
@@ -71,7 +61,7 @@ const Home = () => {
               ) : (
                 <div className="text-2xl font-bold">{stats?.total_bills?.toLocaleString() || 0}</div>
               )}
-              <p className="text-xs text-gray-500">All congressional bills tracked</p>
+              <p className="text-xs text-gray-500">All congressional bills</p>
             </CardContent>
           </Card>
 
@@ -121,49 +111,7 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* How It Works */}
-        <div className="text-center space-y-8">
-          <div>
-            <h2 className="text-3xl font-bold mb-4">How Shadow Congress Works</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Comprehensive legislative intelligence powered by real congressional data
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Search className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Search & Track</h3>
-                <p className="text-sm text-gray-600">
-                  Find bills by topic, sponsor, or keyword across federal Congress with real-time data.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <FileText className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">AI-Powered Analysis</h3>
-                <p className="text-sm text-gray-600">
-                  Generate detailed reports and insights about voting patterns and legislative trends.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">Monitor Activity</h3>
-                <p className="text-sm text-gray-600">
-                  Track legislator profiles, voting records, and sponsorship networks.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Featured Content */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Trending Bills */}
           <Card>
@@ -179,7 +127,7 @@ const Home = () => {
             <CardContent>
               {billsLoading ? (
                 <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
+                  {[...Array(5)].map((_, i) => (
                     <div key={i} className="space-y-2">
                       <Skeleton className="h-4 w-full" />
                       <Skeleton className="h-3 w-3/4" />
@@ -188,26 +136,30 @@ const Home = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {trendingBills.slice(0, 3).map((bill) => (
+                  {trendingBills.map((bill) => (
                     <div key={bill.bill_id} className="border-l-4 border-blue-500 pl-4">
-                      <h4 className="font-medium text-sm">
-                        {bill.bill_number} - {bill.title}
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {bill.last_action}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {bill.status}
-                        </Badge>
-                        <span className="text-xs text-gray-400">
-                          {bill.last_action_date}
-                        </span>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">
+                            {bill.bill_number} - {bill.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {bill.last_action}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {bill.status}
+                            </Badge>
+                            <span className="text-xs text-gray-400">
+                              {bill.last_action_date}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full" onClick={() => navigate("/search")}>
-                    View All Bills
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/search">Search All Bills</Link>
                   </Button>
                 </div>
               )}
@@ -228,7 +180,7 @@ const Home = () => {
             <CardContent>
               {legislatorsLoading ? (
                 <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
+                  {[...Array(5)].map((_, i) => (
                     <div key={i} className="flex items-center space-x-3">
                       <Skeleton className="h-10 w-10 rounded-full" />
                       <div className="space-y-1">
@@ -240,7 +192,7 @@ const Home = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {activeLegislators.slice(0, 3).map((legislator) => (
+                  {activeLegislators.map((legislator) => (
                     <div key={legislator.people_id} className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium">
@@ -260,8 +212,8 @@ const Home = () => {
                       </div>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full" onClick={() => navigate("/legislators")}>
-                    View All Legislators
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/legislators">View All Legislators</Link>
                   </Button>
                 </div>
               )}
@@ -269,26 +221,98 @@ const Home = () => {
           </Card>
         </div>
 
-        {/* Call to Action */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-0">
-          <CardContent className="pt-6 text-center">
-            <h3 className="text-2xl font-bold mb-4">Start Tracking Congress Today</h3>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Get instant access to comprehensive legislative data, voting records, and AI-powered insights.
-            </p>
-            <div className="flex items-center justify-center gap-4">
-              <Button size="lg" onClick={() => navigate("/search")}>
-                Explore Bills & Legislators
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/dashboard")}>
-                View Full Dashboard
-              </Button>
-            </div>
+        {/* Recent Activity Timeline */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-600" />
+              Recent Legislative Activity
+            </CardTitle>
+            <CardDescription>
+              Latest actions and updates from Congress
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activityLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex space-x-4">
+                    <Skeleton className="h-2 w-2 rounded-full mt-2" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => (
+                  <div key={index} className="flex space-x-4">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="flex-1">
+                      <p className="text-sm">
+                        <strong>{activity.bill_title}</strong> - {activity.action_description}
+                      </p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(activity.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/reports">View Full Reports</Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <Building2 className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Browse Bills</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Search and filter congressional bills by status, committee, and topic
+              </p>
+              <Button asChild className="w-full">
+                <Link to="/search">Explore Bills</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Find Legislators</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                View profiles, voting records, and sponsored legislation
+              </p>
+              <Button asChild className="w-full">
+                <Link to="/legislators">View Legislators</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <Vote className="h-12 w-12 text-green-600 mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Voting Records</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Analyze voting patterns and roll call results
+              </p>
+              <Button asChild className="w-full">
+                <Link to="/reports">View Reports</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
 };
 
-export default Home;
+export default RealDataDashboard;

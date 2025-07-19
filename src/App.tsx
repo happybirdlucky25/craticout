@@ -9,7 +9,7 @@ import { RouteErrorBoundary } from "./components/ErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import Search from "./pages/Search";
 import BillDetail from "./pages/BillDetail";
-import Reports from "./pages/Reports";
+import ReportsWithExistingData from "./pages/ReportsWithExistingData";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import Legislators from "./pages/Legislators";
@@ -43,32 +43,32 @@ const App = () => (
             <Navbar />
             <main className="flex-1">
               <Routes>
-            <Route path="/" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
-            <Route path="/search" element={<RouteErrorBoundary><Search /></RouteErrorBoundary>} />
-            <Route path="/bills/:id" element={<RouteErrorBoundary><BillDetail /></RouteErrorBoundary>} />
-            <Route path="/reports" element={<RouteErrorBoundary><Reports /></RouteErrorBoundary>} />
-            <Route path="/campaigns" element={<RouteErrorBoundary><Campaigns /></RouteErrorBoundary>} />
-            <Route path="/campaigns/:id" element={<RouteErrorBoundary><CampaignDetail /></RouteErrorBoundary>} />
-            <Route path="/legislators" element={<RouteErrorBoundary><Legislators /></RouteErrorBoundary>} />
-            <Route path="/tracked" element={<RouteErrorBoundary><Tracked /></RouteErrorBoundary>} />
-            <Route path="/alerts" element={<RouteErrorBoundary><Alerts /></RouteErrorBoundary>} />
-            <Route path="/profile" element={<RouteErrorBoundary><Profile /></RouteErrorBoundary>} />
-            <Route path="/admin" element={<RouteErrorBoundary><Admin /></RouteErrorBoundary>} />
-            <Route path="/login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
-            <Route path="/about" element={<RouteErrorBoundary><About /></RouteErrorBoundary>} />
-            <Route path="/contact" element={<RouteErrorBoundary><Contact /></RouteErrorBoundary>} />
-            <Route path="/privacy" element={<RouteErrorBoundary><Privacy /></RouteErrorBoundary>} />
-            <Route path="/terms" element={<RouteErrorBoundary><Terms /></RouteErrorBoundary>} />
-            <Route path="/settings" element={<RouteErrorBoundary><Settings /></RouteErrorBoundary>} />
-            <Route path="/pricing" element={<RouteErrorBoundary><Pricing /></RouteErrorBoundary>} />
-            <Route path="/billing" element={<RouteErrorBoundary><Billing /></RouteErrorBoundary>} />
-            <Route path="/checkout/success" element={<RouteErrorBoundary><CheckoutSuccess /></RouteErrorBoundary>} />
-            <Route path="/civic-education" element={<RouteErrorBoundary><CivicEducation /></RouteErrorBoundary>} />
-            <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
+                <Route path="/" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
+                <Route path="/search" element={<RouteErrorBoundary><Search /></RouteErrorBoundary>} />
+                <Route path="/bills/:id" element={<RouteErrorBoundary><BillDetail /></RouteErrorBoundary>} />
+                <Route path="/reports" element={<RouteErrorBoundary><ReportsWithExistingData /></RouteErrorBoundary>} />
+                <Route path="/campaigns" element={<RouteErrorBoundary><Campaigns /></RouteErrorBoundary>} />
+                <Route path="/campaigns/:id" element={<RouteErrorBoundary><CampaignDetail /></RouteErrorBoundary>} />
+                <Route path="/legislators" element={<RouteErrorBoundary><Legislators /></RouteErrorBoundary>} />
+                <Route path="/tracked" element={<RouteErrorBoundary><Tracked /></RouteErrorBoundary>} />
+                <Route path="/alerts" element={<RouteErrorBoundary><Alerts /></RouteErrorBoundary>} />
+                <Route path="/profile" element={<RouteErrorBoundary><Profile /></RouteErrorBoundary>} />
+                <Route path="/admin" element={<RouteErrorBoundary><Admin /></RouteErrorBoundary>} />
+                <Route path="/login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
+                <Route path="/about" element={<RouteErrorBoundary><About /></RouteErrorBoundary>} />
+                <Route path="/contact" element={<RouteErrorBoundary><Contact /></RouteErrorBoundary>} />
+                <Route path="/privacy" element={<RouteErrorBoundary><Privacy /></RouteErrorBoundary>} />
+                <Route path="/terms" element={<RouteErrorBoundary><Terms /></RouteErrorBoundary>} />
+                <Route path="/settings" element={<RouteErrorBoundary><Settings /></RouteErrorBoundary>} />
+                <Route path="/pricing" element={<RouteErrorBoundary><Pricing /></RouteErrorBoundary>} />
+                <Route path="/billing" element={<RouteErrorBoundary><Billing /></RouteErrorBoundary>} />
+                <Route path="/checkout/success" element={<RouteErrorBoundary><CheckoutSuccess /></RouteErrorBoundary>} />
+                <Route path="/civic-education" element={<RouteErrorBoundary><CivicEducation /></RouteErrorBoundary>} />
+                <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </StripeProvider>

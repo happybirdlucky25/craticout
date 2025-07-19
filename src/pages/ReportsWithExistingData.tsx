@@ -8,9 +8,13 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useReportInbox, useDeleteReport, useReportStats } from "@/hooks/useReportInbox";
+import { 
+  useSimpleBillAnalysisReports, 
+  useDeleteSimpleBillAnalysis, 
+  useSimpleBillAnalysisStats,
+  type SimpleBillAnalysisReport 
+} from "@/hooks/useSimpleBillAnalysisReports";
 import { formatBillNumber } from "@/utils/billNumberFormatter";
-import type { ReportInboxWithBill } from "@/types/database";
 import { 
   Search, 
   Brain, 
@@ -31,7 +35,7 @@ import {
 } from "lucide-react";
 
 // Share functionality for reports
-const shareReport = async (report: ReportInboxWithBill) => {
+const shareReport = async (report: SimpleBillAnalysisReport) => {
   try {
     const shareData = {
       title: `PoliUX Report: ${report.title}`,
@@ -66,9 +70,9 @@ const InboxList = ({
   loading,
   onDeleteReport
 }: {
-  reports: ReportInboxWithBill[];
-  selectedReport: ReportInboxWithBill | null;
-  onSelectReport: (report: ReportInboxWithBill) => void;
+  reports: SimpleBillAnalysisReport[];
+  selectedReport: SimpleBillAnalysisReport | null;
+  onSelectReport: (report: SimpleBillAnalysisReport) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   filterType: string;
@@ -84,6 +88,7 @@ const InboxList = ({
       case 'compliance': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'stakeholder analysis': 
       case 'analysis': return <FileText className="h-4 w-4 text-purple-500" />;
+      case 'position paper':
       case 'amendment proposal':
       case 'amendment': return <FileText className="h-4 w-4 text-orange-500" />;
       default: return <FileText className="h-4 w-4 text-gray-500" />;
@@ -151,12 +156,11 @@ const InboxList = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="Analysis">Analysis</SelectItem>
+              <SelectItem value="Position Paper">Position Paper</SelectItem>
               <SelectItem value="Strategy Memo">Strategy Memo</SelectItem>
               <SelectItem value="Compliance Review">Compliance Review</SelectItem>
               <SelectItem value="Stakeholder Analysis">Stakeholder Analysis</SelectItem>
-              <SelectItem value="Amendment Proposal">Amendment Proposal</SelectItem>
-              <SelectItem value="Summary">Summary</SelectItem>
-              <SelectItem value="Comprehensive">Comprehensive</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -282,7 +286,7 @@ const ReportViewer = ({
   report, 
   onDeleteReport 
 }: { 
-  report: ReportInboxWithBill | null;
+  report: SimpleBillAnalysisReport | null;
   onDeleteReport: (reportId: string) => void;
 }) => {
   if (!report) {
@@ -429,7 +433,7 @@ const ReportViewer = ({
           <div className="p-6">
             <div className="prose prose-sm max-w-none">
               <div className="whitespace-pre-wrap">
-                {report.content}
+                {report.content || 'No content available for this report.'}
               </div>
             </div>
           </div>
@@ -439,11 +443,11 @@ const ReportViewer = ({
   );
 };
 
-const Inbox = () => {
-  const { data: inboxData, loading, error, refetch } = useReportInbox(1, 50);
-  const { deleteReport } = useDeleteReport();
-  const { data: stats } = useReportStats();
-  const [selectedReport, setSelectedReport] = useState<ReportInboxWithBill | null>(null);
+const ReportsWithExistingData = () => {
+  const { data: inboxData, loading, error, refetch } = useSimpleBillAnalysisReports(1, 50);
+  const { deleteReport } = useDeleteSimpleBillAnalysis();
+  const { data: stats } = useSimpleBillAnalysisStats();
+  const [selectedReport, setSelectedReport] = useState<SimpleBillAnalysisReport | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
@@ -467,7 +471,7 @@ const Inbox = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Failed to Load Inbox</h2>
+          <h2 className="text-xl font-semibold mb-2">Failed to Load Reports</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
           <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
@@ -530,4 +534,4 @@ const Inbox = () => {
   );
 };
 
-export default Inbox;
+export default ReportsWithExistingData;

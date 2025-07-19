@@ -1,6 +1,74 @@
 // 🏛️ PoliUX Database Types
 // Comprehensive TypeScript interfaces matching exact database schema
 
+// 📋 Campaign Management Types
+export interface Campaign {
+  id: string;
+  user_id?: string;
+  name: string;
+  description?: string;
+  status: 'active' | 'archived' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignBill {
+  id: string;
+  campaign_id: string;
+  bill_id: string;
+  added_at: string;
+  notes?: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+export interface CampaignLegislator {
+  id: string;
+  campaign_id: string;
+  people_id: string;
+  role: 'target' | 'ally' | 'opponent' | 'stakeholder' | 'sponsor';
+  added_at: string;
+  notes?: string;
+}
+
+export interface CampaignDocument {
+  id: string;
+  campaign_id: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  storage_path: string;
+  uploaded_at: string;
+  uploaded_by?: string;
+}
+
+export interface CampaignNote {
+  id: string;
+  campaign_id: string;
+  content?: string;
+  updated_at: string;
+  updated_by?: string;
+}
+
+// Extended types with relationships
+export interface CampaignWithDetails extends Campaign {
+  bill_count: number;
+  legislator_count: number;
+  bills: (CampaignBill & { bill?: Bill })[];
+  legislators: (CampaignLegislator & { person?: Person })[];
+  documents?: CampaignDocument[];
+  notes?: CampaignNote;
+}
+
+// Filter types for campaigns
+export interface CampaignFilters {
+  status?: string[];
+  search_term?: string;
+  date_range?: {
+    start: string;
+    end: string;
+  };
+}
+
 export interface Bill {
   bill_id: string;
   session_id?: number;
@@ -224,8 +292,75 @@ export interface RecentActivity {
   date: string;
 }
 
-// 🎯 User Interaction Types
+// 🎯 Tracking and Campaign Types
 
+export interface TrackedBill {
+  id: string;
+  user_id: string;
+  bill_id: string;
+  tracked_at: string;
+  notes?: string;
+  campaign_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrackedBillWithBill extends TrackedBill {
+  bill?: Bill;
+}
+
+export interface TrackedLegislator {
+  id: string;
+  user_id: string;
+  people_id: string;
+  tracked_at: string;
+  notes?: string;
+  notification_types: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrackedLegislatorWithPerson extends TrackedLegislator {
+  person?: Person;
+}
+
+export interface Campaign {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  status: 'active' | 'archived' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignBill {
+  id: string;
+  campaign_id: string;
+  bill_id: string;
+  tracked_bill_id?: string;
+  added_at: string;
+  notes?: string;
+}
+
+export interface CampaignLegislator {
+  id: string;
+  campaign_id: string;
+  people_id: string;
+  tracked_legislator_id?: string;
+  role: 'target' | 'ally' | 'opponent' | 'stakeholder' | 'sponsor';
+  added_at: string;
+  notes?: string;
+}
+
+export interface CampaignWithDetails extends Campaign {
+  bills?: (CampaignBill & { bill?: Bill })[];
+  legislators?: (CampaignLegislator & { person?: Person })[];
+  bill_count?: number;
+  legislator_count?: number;
+}
+
+// Legacy types for compatibility
 export interface UserBillTracking {
   user_id: string;
   bill_id: string;
@@ -241,6 +376,40 @@ export interface UserLegislatorFollow {
   notification_types: string[];
 }
 
+// 📋 Report Inbox Types
+
+export interface ReportInbox {
+  id: string;
+  bill_id?: string;
+  bill_number?: string;
+  report_type: string;
+  user_id: string;
+  date_created: string;
+  expiration_date: string;
+  content: string;
+  title: string;
+  campaign_name?: string;
+  bills_included: number;
+  files_used: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReportInboxWithBill extends ReportInbox {
+  bill?: Bill;
+}
+
+export interface CreateReportRequest {
+  bill_id?: string;
+  bill_number?: string;
+  report_type: string;
+  content: string;
+  title: string;
+  campaign_name?: string;
+  bills_included?: number;
+  files_used?: number;
+}
+
 // 🔧 API Response Types
 
 export interface BillListResponse {
@@ -249,6 +418,13 @@ export interface BillListResponse {
   page: number;
   per_page: number;
   filters_applied: BillFilters;
+}
+
+export interface ReportInboxResponse {
+  reports: ReportInboxWithBill[];
+  total_count: number;
+  page: number;
+  per_page: number;
 }
 
 export interface PersonListResponse {

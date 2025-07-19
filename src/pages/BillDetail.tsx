@@ -1,697 +1,212 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { formatBillNumber } from "@/utils/billNumberFormatter";
-import { toast } from "sonner";
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   ArrowLeft, 
-  Heart, 
-  BookmarkPlus, 
-  Share, 
-  Mail, 
-  FileText, 
+  Calendar, 
   Users, 
-  Calendar,
-  ExternalLink,
-  Download,
-  Zap,
-  Brain,
-  CheckCircle,
-  XCircle,
+  ExternalLink, 
+  ChevronDown, 
+  ChevronUp,
+  FileText,
   Clock,
-  Building
-} from "lucide-react";
+  Building,
+  AlertCircle,
+  Loader2
+} from 'lucide-react';
+import { useBillData, useVoteBreakdown, type Rollcall, type Vote } from '@/hooks/useBillData';
+import { useBillAnalysisRealtime } from '@/hooks/useBillAnalysisRealtime';
+import { formatBillNumber } from '@/utils/billNumberFormatter';
+import { toast } from 'sonner';
+import { TrackButton } from '@/components/bills/TrackButton';
 
-// Mock bill data based on the JSON structure
-const mockBillData = {
-  "status": "OK",
-  "bill": {
-    "bill_id": 1678901,
-    "state": "US",
-    "session": {
-      "session_id": 2050,
-      "name": "118th Congress (2025‑2026)",
-      "year_start": 2025,
-      "year_end": 2026
-    },
-    "bill_number": "HR987",
-    "bill_type": "resolution",
-    "body": "H",
-    "current_body": "H",
-    "title": "A resolution supporting the development of a national AI‑safety framework",
-    "description": "Expresses the sense of the House that the United States should prioritize creation of a comprehensive artificial‑intelligence safety framework.",
-    "status": "Introduced",
-    "status_date": "2025‑03‑01",
-    "introduced_date": "2025‑02‑28",
-    "last_action": "Referred to the House Committee on Science, Space, and Technology",
-    "last_action_date": "2025‑03‑01",
-    "sponsors": [
-      {
-        "people_id": 41234,
-        "name": "Rep. Jane Doe",
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "party": "D",
-        "role": "Primary Sponsor"
-      },
-      {
-        "people_id": 51277,
-        "name": "Rep. John Smith",
-        "first_name": "John",
-        "last_name": "Smith",
-        "party": "R",
-        "role": "Co‑Sponsor"
-      }
-    ],
-    "history": [
-      { "date": "2025‑02‑28", "action": "Filed" },
-      { "date": "2025‑03‑01", "action": "Referred to Committee on Science, Space, and Technology" }
-    ],
-    "texts": [
-      {
-        "doc_id": 908771,
-        "date": "2025‑02‑28",
-        "type": "Introduced",
-        "mime": "application/pdf",
-        "url": "https://legiscan.com/US/text/HR987/id/908771"
-      }
-    ],
-    "votes": [
-      {
-        "roll_call_id": 62011,
-        "date": "2025‑03‑15",
-        "motion": "Adopt Resolution",
-        "yeas": 224,
-        "nays": 206,
-        "absent": 3,
-        "url": "https://legiscan.com/US/rollcall/HR987/id/62011"
-      }
-    ],
-    "amendments": [
-      {
-        "amendment_id": 12055,
-        "date": "2025‑03‑12",
-        "title": "Amendment clarifying federal‑state collaboration",
-        "description": "Adds language requiring consultation with state regulators.",
-        "status": "Adopted"
-      }
-    ],
-    "committees": [
-      {
-        "committee_id": 2580,
-        "name": "House Committee on Science, Space, and Technology",
-        "chamber": "House"
-      }
-    ],
-    "subjects": ["Artificial Intelligence", "Technology assessment", "Federal‑state relations"],
-    "urls": {
-      "legiscan": "https://legiscan.com/US/bill/HR987/2025",
-      "congress": "https://www.congress.gov/bill/118th-congress-house-resolution/987",
-      "openstates": null
-    },
-    "change_hash": "37d2c3b0e5c1194d9f0f0a6a4ab55d2",
-    "updated": "2025‑03‑17T14:10:22Z"
-  }
-};
-
-const BillHeader = ({ bill }: { bill: any }) => {
-  const [isTracked, setIsTracked] = useState(false);
-  const [showTrackModal, setShowTrackModal] = useState(false);
-  const [showContactModal, setShowContactModal] = useState(false);
-  
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'passed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'signed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'introduced': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'in committee': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'vetoed': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Bill URL copied to clipboard");
-  };
-
-  const handleTrack = () => {
-    if (isTracked) {
-      setIsTracked(false);
-      toast.success("Bill removed from tracking");
-    } else {
-      setShowTrackModal(true);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-sm">
-            {formatBillNumber(bill.bill_number)}
-          </Badge>
-          <Badge className={`${getStatusColor(bill.status)} border`}>
-            {bill.status}
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            {bill.session.name}
-          </span>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleShare}>
-            <Share className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowContactModal(true)}>
-            <Mail className="h-4 w-4 mr-2" />
-            Contact Sponsor
-          </Button>
-          <Button 
-            variant={isTracked ? "default" : "outline"} 
-            size="sm"
-            onClick={handleTrack}
-          >
-            {isTracked ? (
-              <Heart className="h-4 w-4 mr-2 fill-current" />
-            ) : (
-              <BookmarkPlus className="h-4 w-4 mr-2" />
-            )}
-            {isTracked ? "Tracked" : "Track Bill"}
-          </Button>
-        </div>
-      </div>
-      
-      <div>
-        <h1 className="text-3xl font-bold mb-2">{bill.title}</h1>
-        <p className="text-lg text-muted-foreground">{bill.description}</p>
-      </div>
-
-      <TrackBillModal 
-        isOpen={showTrackModal}
-        onClose={() => setShowTrackModal(false)}
-        onConfirm={() => {
-          setIsTracked(true);
-          setShowTrackModal(false);
-          toast.success("Bill added to tracking");
-        }}
-        bill={bill}
-      />
-
-      <ContactSponsorModal
-        isOpen={showContactModal}
-        onClose={() => setShowContactModal(false)}
-        sponsors={bill.sponsors}
-      />
-    </div>
-  );
-};
-
-const TrackBillModal = ({ isOpen, onClose, onConfirm, bill }: any) => {
-  const [selectedCampaign, setSelectedCampaign] = useState("");
-  
-  const campaigns = [
-    { id: "1", name: "Clean Energy Initiative" },
-    { id: "2", name: "Education Reform Coalition" },
-    { id: "3", name: "Healthcare Access Campaign" }
-  ];
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Track {formatBillNumber(bill.bill_number)}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Add this bill to a campaign or track it individually:
-          </p>
-          <div className="font-medium">{bill.title}</div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Add to Campaign (optional)</label>
-            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a campaign or track individually" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Track individually</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex gap-2 pt-4">
-            <Button onClick={onConfirm} className="flex-1">
-              Start Tracking
-            </Button>
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const ContactSponsorModal = ({ isOpen, onClose, sponsors }: any) => {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Contact Bill Sponsors</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {sponsors.map((sponsor: any) => (
-            <Card key={sponsor.people_id}>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{sponsor.name}</div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Badge variant={sponsor.party === 'D' ? 'default' : 'secondary'} className="w-6 h-6 p-0 text-xs">
-                        {sponsor.party}
-                      </Badge>
-                      {sponsor.role}
-                    </div>
-                  </div>
-                  <Button size="sm">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Contact
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const OverviewTab = ({ bill }: { bill: any }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const totalVotes = bill.votes.length > 0 ? 
-    bill.votes[0].yeas + bill.votes[0].nays + bill.votes[0].absent : 0;
-
-  return (
-    <div className="space-y-8">
-      {/* Key Information */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Key Dates
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Introduced:</span>
-              <span>{formatDate(bill.introduced_date)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Last Action:</span>
-              <span>{formatDate(bill.last_action_date)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Status Date:</span>
-              <span>{formatDate(bill.status_date)}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Committees
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {bill.committees.map((committee: any) => (
-              <div key={committee.committee_id} className="text-sm">
-                <div className="font-medium">{committee.name}</div>
-                <div className="text-muted-foreground">{committee.chamber}</div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Subjects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {bill.subjects.map((subject: string) => (
-                <Badge key={subject} variant="secondary" className="text-xs">
-                  {subject}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sponsors */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Sponsors ({bill.sponsors.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            {bill.sponsors.map((sponsor: any) => (
-              <div key={sponsor.people_id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">{sponsor.name}</div>
-                  <div className="text-sm text-muted-foreground">{sponsor.role}</div>
-                </div>
-                <Badge variant={sponsor.party === 'D' ? 'default' : 'secondary'} className="w-8 h-8 p-0">
-                  {sponsor.party}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Votes */}
-      {bill.votes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Votes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {bill.votes.map((vote: any) => (
-              <div key={vote.roll_call_id} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{vote.motion}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatDate(vote.date)}
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={vote.url} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View Details
-                    </a>
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-600 font-medium">Yeas: {vote.yeas}</span>
-                    <span className="text-red-600 font-medium">Nays: {vote.nays}</span>
-                    <span className="text-gray-600">Absent: {vote.absent}</span>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <Progress 
-                      value={(vote.yeas / totalVotes) * 100} 
-                      className="h-2 bg-red-100"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{((vote.yeas / totalVotes) * 100).toFixed(1)}% Yes</span>
-                      <span>{((vote.nays / totalVotes) * 100).toFixed(1)}% No</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Amendments */}
-      {bill.amendments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Amendments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {bill.amendments.map((amendment: any) => (
-              <div key={amendment.amendment_id} className="border-l-4 border-blue-200 pl-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium">{amendment.title}</div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {amendment.description}
-                    </p>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {formatDate(amendment.date)}
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={amendment.status === 'Adopted' ? 'default' : 'secondary'}
-                    className="ml-4"
-                  >
-                    {amendment.status === 'Adopted' ? (
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                    ) : (
-                      <Clock className="h-3 w-3 mr-1" />
-                    )}
-                    {amendment.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Legislative History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {bill.history.map((item: any, index: number) => (
-              <div key={index} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="w-3 h-3 bg-primary rounded-full"></div>
-                  {index < bill.history.length - 1 && (
-                    <div className="w-px h-8 bg-border mt-2"></div>
-                  )}
-                </div>
-                <div className="flex-1 pb-4">
-                  <div className="font-medium">{item.action}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatDate(item.date)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* External Links */}
-      <Card>
-        <CardHeader>
-          <CardTitle>External Resources</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {bill.urls.legiscan && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={bill.urls.legiscan} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  LegiScan
-                </a>
-              </Button>
-            )}
-            {bill.urls.congress && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={bill.urls.congress} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Congress.gov
-                </a>
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const FullTextTab = ({ bill }: { bill: any }) => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium mb-4">Bill Documents</h3>
-        {bill.texts.length > 0 ? (
-          <div className="space-y-4">
-            {bill.texts.map((text: any) => (
-              <Card key={text.doc_id}>
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{text.type}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(text.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={text.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          View Online
-                        </a>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={text.url} download>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download PDF
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
-            <p>No bill text documents available</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const AIReportTab = ({ bill }: { bill: any }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [reportType, setReportType] = useState("summary");
-  
-  const handleGenerateReport = () => {
-    setIsGenerating(true);
-    // Mock generation delay
-    setTimeout(() => {
-      setIsGenerating(false);
-      toast.success("AI report generated successfully");
-    }, 3000);
-  };
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            AI Analysis Tools
-          </CardTitle>
-          <CardDescription>
-            Generate comprehensive AI-powered analysis of this legislation
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Report Type</label>
-            <Select value={reportType} onValueChange={setReportType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="summary">Quick Summary</SelectItem>
-                <SelectItem value="fiscal">Fiscal Impact Analysis</SelectItem>
-                <SelectItem value="opinion">Public Opinion Assessment</SelectItem>
-                <SelectItem value="strategy">Strategy Memo</SelectItem>
-                <SelectItem value="comprehensive">Comprehensive Report</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button 
-            onClick={handleGenerateReport} 
-            disabled={isGenerating}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Generating Report...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 mr-2" />
-                Generate AI Report
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick AI Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="prose prose-sm max-w-none">
-            <p className="text-muted-foreground italic">
-              Click "Generate AI Report" above to create an AI-powered analysis of this bill.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+const FULL_TEXT_PREVIEW_LENGTH = 1200;
 
 const BillDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
-  
-  const bill = mockBillData.bill;
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [expandedVotes, setExpandedVotes] = useState<Record<string, boolean>>({});
+
+  const { 
+    bill, 
+    history, 
+    amendments, 
+    rollcalls, 
+    sponsors, 
+    loading, 
+    error 
+  } = useBillData(id || '');
+
+  const analysisManager = useBillAnalysisRealtime(id || '', bill?.last_action_date || null);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const toggleVote = (rollCallId: string) => {
+    setExpandedVotes(prev => ({ ...prev, [rollCallId]: !prev[rollCallId] }));
+  };
+
+  // Navigate back with session storage support
+  const handleBackClick = () => {
+    const lastSearchState = sessionStorage.getItem('lastSearchState');
+    if (lastSearchState) {
+      navigate(`/search${lastSearchState}`);
+      sessionStorage.removeItem('lastSearchState');
+    } else {
+      navigate(-1);
+    }
+  };
+
+  // Process key dates from history
+  const keyDates = useMemo(() => {
+    if (!history.length || !bill) return [];
+
+    const dates = [];
+    
+    // Introduced date
+    const introducedDate = bill.status_date || history[0]?.date;
+    if (introducedDate) {
+      dates.push({
+        label: 'Introduced',
+        date: introducedDate,
+        action: 'Bill introduced'
+      });
+    }
+
+    // Last action
+    if (bill.last_action_date && bill.last_action) {
+      dates.push({
+        label: 'Last Action',
+        date: bill.last_action_date,
+        action: bill.last_action
+      });
+    }
+
+    // Milestones from history
+    const milestoneActions = ['passed', 'referred', 'assigned', 'adopted', 'enrolled'];
+    const milestones = history
+      .filter(entry => 
+        milestoneActions.some(action => 
+          entry.action.toLowerCase().includes(action)
+        )
+      )
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    milestones.forEach(milestone => {
+      dates.push({
+        label: milestone.action.split(' ')[0],
+        date: milestone.date,
+        action: milestone.action
+      });
+    });
+
+    return dates.slice(0, 5); // Limit to 5 key dates
+  }, [history, bill]);
+
+  // Process committees from history
+  const committees = useMemo(() => {
+    const committeeSet = new Set<string>();
+    
+    // Primary committee
+    if (bill?.committee) {
+      committeeSet.add(bill.committee);
+    }
+
+    // Additional committees from history
+    history.forEach(entry => {
+      const action = entry.action.toLowerCase();
+      if (action.includes('committee')) {
+        // Extract committee name from action text
+        const match = action.match(/committee[:\s]+([^;,]+)/i);
+        if (match) {
+          const committeeName = match[1].trim();
+          if (committeeName.length > 3) { // Filter out very short matches
+            committeeSet.add(committeeName);
+          }
+        }
+      }
+    });
+
+    return Array.from(committeeSet).slice(0, 3); // Limit to 3 committees
+  }, [bill, history]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 30) return `${diffDays}d ago`;
+      return formatDate(dateString);
+    } catch {
+      return formatDate(dateString);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Skeleton className="h-8 w-32 mb-4" />
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-6 w-full mb-2" />
+          <Skeleton className="h-6 w-3/4" />
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !bill) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Button 
+          variant="ghost" 
+          onClick={handleBackClick}
+          className="mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        <div className="text-center py-12">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Error Loading Bill</h3>
+          <p className="text-muted-foreground mb-4">{error || 'Bill not found'}</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <button onClick={() => navigate("/")} className="hover:text-foreground">
-          Home
-        </button>
-        <span>/</span>
-        <button onClick={() => navigate("/search")} className="hover:text-foreground">
-          Search
-        </button>
-        <span>/</span>
-        <span>Bill Detail</span>
-      </div>
-
       {/* Back Button */}
       <Button 
         variant="ghost" 
-        onClick={() => navigate(-1)}
+        onClick={handleBackClick}
         className="mb-6"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -699,30 +214,509 @@ const BillDetail = () => {
       </Button>
 
       {/* Bill Header */}
-      <BillHeader bill={bill} />
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="text-sm">
+              {formatBillNumber(bill.bill_number)}
+            </Badge>
+            {bill.status_desc && (
+              <Badge className="text-sm">
+                {bill.status_desc}
+              </Badge>
+            )}
+            {bill.last_action_date && (
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatDate(bill.last_action_date)}
+              </span>
+            )}
+          </div>
+          <TrackButton billId={bill.bill_id} />
+        </div>
+        <h1 className="text-3xl font-bold mb-4">{bill.title}</h1>
+        {bill.description && (
+          <p className="text-lg text-muted-foreground">{bill.description}</p>
+        )}
+      </div>
 
-      <Separator className="my-8" />
+      {/* Key Dates and Committees Panels */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Key Dates Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Key Dates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {keyDates.map((date, index) => (
+                <div key={index} className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">{date.label}</p>
+                    <p className="text-sm text-muted-foreground truncate">{date.action}</p>
+                  </div>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">
+                    {formatDate(date.date)}
+                  </span>
+                </div>
+              ))}
+              {keyDates.length === 0 && (
+                <p className="text-sm text-muted-foreground">No key dates available</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="fulltext">Full Text</TabsTrigger>
-          <TabsTrigger value="aireport">AI Report</TabsTrigger>
-        </TabsList>
+        {/* Committees Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Committees
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {committees.map((committee, index) => (
+                <div key={index} className="p-2 bg-muted rounded">
+                  <p className="text-sm font-medium">{committee}</p>
+                </div>
+              ))}
+              {committees.length === 0 && (
+                <p className="text-sm text-muted-foreground">No committee information available</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="overview">
-          <OverviewTab bill={bill} />
-        </TabsContent>
+      {/* Sponsors */}
+      {sponsors.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Sponsors & Co-Sponsors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {sponsors.map((sponsor) => (
+                <Link
+                  key={sponsor.sponsor_id}
+                  to={`/legislators/${sponsor.people_id}`}
+                  className="p-3 border rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{sponsor.name}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {sponsor.party && (
+                          <Badge variant="outline" className="text-xs">
+                            {sponsor.party}
+                          </Badge>
+                        )}
+                        {sponsor.district && <span>District {sponsor.district}</span>}
+                      </div>
+                      {sponsor.position && (
+                        <p className="text-xs text-muted-foreground capitalize">{sponsor.position}</p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="fulltext">
-          <FullTextTab bill={bill} />
-        </TabsContent>
+      {/* Full Text Section */}
+      {(bill.full_bill_text || bill.state_link) && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Full Text
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {bill.full_bill_text ? (
+              <Collapsible
+                open={expandedSections.fullText}
+                onOpenChange={() => toggleSection('fullText')}
+              >
+                <div className="space-y-4">
+                  <div className="prose max-w-none">
+                    <p className="whitespace-pre-wrap text-sm">
+                      {expandedSections.fullText 
+                        ? bill.full_bill_text 
+                        : `${bill.full_bill_text.substring(0, FULL_TEXT_PREVIEW_LENGTH)}${bill.full_bill_text.length > FULL_TEXT_PREVIEW_LENGTH ? '...' : ''}`
+                      }
+                    </p>
+                  </div>
+                  {bill.full_bill_text.length > FULL_TEXT_PREVIEW_LENGTH && (
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        {expandedSections.fullText ? (
+                          <>
+                            <ChevronUp className="h-4 w-4 mr-2" />
+                            Show Less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4 mr-2" />
+                            Show More
+                          </>
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  )}
+                </div>
+              </Collapsible>
+            ) : bill.state_link ? (
+              <Button asChild variant="outline">
+                <a href={bill.state_link} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Official Text
+                </a>
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="aireport">
-          <AIReportTab bill={bill} />
-        </TabsContent>
-      </Tabs>
+      {/* Legislative History */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Legislative History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {history.length > 0 ? (
+            <Collapsible
+              open={expandedSections.history || history.length <= 5}
+              onOpenChange={() => toggleSection('history')}
+            >
+              <div className="space-y-3">
+                <CollapsibleContent>
+                  <div className="space-y-3">
+                    {(expandedSections.history ? history : history.slice(0, 5)).map((entry) => (
+                      <div key={entry.history_id} className="flex gap-4 p-3 border rounded">
+                        <div className="text-sm text-muted-foreground whitespace-nowrap">
+                          {formatDate(entry.date)}
+                        </div>
+                        <div className="flex-1">
+                          {entry.chamber && (
+                            <Badge variant="outline" className="text-xs mb-1">
+                              {entry.chamber}
+                            </Badge>
+                          )}
+                          <p className="text-sm">{entry.action}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+                {history.length > 5 && (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {expandedSections.history ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-2" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                          Show All ({history.length} entries)
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                )}
+              </div>
+            </Collapsible>
+          ) : (
+            <p className="text-sm text-muted-foreground">No legislative history available</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Amendments */}
+      {amendments.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Amendments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {amendments.map((amendment) => (
+                <div key={amendment.document_id} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium">
+                      {amendment.document_desc || 'Amended Bill'}
+                    </p>
+                    {amendment.document_type && (
+                      <p className="text-sm text-muted-foreground">{amendment.document_type}</p>
+                    )}
+                  </div>
+                  {amendment.state_link && (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={amendment.state_link} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Votes */}
+      <VotesSection 
+        rollcalls={rollcalls} 
+        expandedVotes={expandedVotes}
+        toggleVote={toggleVote}
+        formatDate={formatDate}
+      />
+
+      {/* External Links */}
+      {bill.state_link && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>External Links</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <a href={bill.state_link} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Official Bill Page
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bill Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Bill Analysis</span>
+            {analysisManager.statusBadge && (
+              <Badge variant={analysisManager.statusBadge.variant}>
+                {analysisManager.statusBadge.text}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button 
+              onClick={analysisManager.startAnalysis}
+              disabled={analysisManager.isButtonDisabled}
+              className="w-full sm:w-auto"
+            >
+              {analysisManager.state === 'RUNNING' && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {analysisManager.buttonText}
+            </Button>
+
+            {analysisManager.error && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
+                {analysisManager.error}
+              </div>
+            )}
+
+            {analysisManager.state === 'RUNNING' && !analysisManager.analysis && (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
+            )}
+
+            {analysisManager.analysis && (
+              <div className="prose max-w-none">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                  <Clock className="h-3 w-3" />
+                  <span>
+                    {formatDate(analysisManager.analysis.created_at)} • {formatRelativeTime(analysisManager.analysis.created_at)}
+                  </span>
+                </div>
+                <div className="whitespace-pre-wrap">
+                  {analysisManager.analysis.content || 'Analysis content not available.'}
+                </div>
+                {analysisManager.analysis.tags && analysisManager.analysis.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {analysisManager.analysis.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Separate component for votes section to manage vote breakdown state
+const VotesSection = ({ 
+  rollcalls, 
+  expandedVotes, 
+  toggleVote, 
+  formatDate 
+}: {
+  rollcalls: Rollcall[];
+  expandedVotes: Record<string, boolean>;
+  toggleVote: (rollCallId: string) => void;
+  formatDate: (date: string) => string;
+}) => {
+  if (rollcalls.length === 0) return null;
+
+  return (
+    <Card className="mb-8">
+      <CardHeader>
+        <CardTitle>Votes</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {rollcalls.map((rollcall) => (
+            <VoteBreakdown
+              key={rollcall.roll_call_id}
+              rollcall={rollcall}
+              isExpanded={expandedVotes[rollcall.roll_call_id]}
+              onToggle={() => toggleVote(rollcall.roll_call_id)}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Component for individual vote breakdown
+const VoteBreakdown = ({ 
+  rollcall, 
+  isExpanded, 
+  onToggle, 
+  formatDate 
+}: {
+  rollcall: Rollcall;
+  isExpanded: boolean;
+  onToggle: () => void;
+  formatDate: (date: string) => string;
+}) => {
+  const { votes, loading, error, fetchVotes } = useVoteBreakdown(rollcall.roll_call_id);
+
+  const handleToggle = () => {
+    if (!isExpanded && votes.length === 0) {
+      fetchVotes();
+    }
+    onToggle();
+  };
+
+  const getVoteColor = (vote: string) => {
+    switch (vote?.toLowerCase()) {
+      case 'yea':
+      case 'yes': return 'text-green-600';
+      case 'nay':
+      case 'no': return 'text-red-600';
+      case 'nv':
+      case 'not voting': return 'text-yellow-600';
+      case 'absent': return 'text-gray-600';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  return (
+    <div className="border rounded p-4">
+      <div 
+        className="flex items-center justify-between cursor-pointer"
+        onClick={handleToggle}
+      >
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-sm text-muted-foreground">
+              {formatDate(rollcall.date)}
+            </span>
+            {rollcall.chamber && (
+              <Badge variant="outline" className="text-xs">
+                {rollcall.chamber}
+              </Badge>
+            )}
+          </div>
+          <p className="font-medium">{rollcall.description}</p>
+          <div className="flex gap-4 text-sm text-muted-foreground mt-2">
+            {rollcall.yea !== undefined && <span>Yea: {rollcall.yea}</span>}
+            {rollcall.nay !== undefined && <span>Nay: {rollcall.nay}</span>}
+            {rollcall.nv !== undefined && <span>Not Voting: {rollcall.nv}</span>}
+            {rollcall.absent !== undefined && <span>Absent: {rollcall.absent}</span>}
+            {rollcall.total !== undefined && <span>Total: {rollcall.total}</span>}
+          </div>
+        </div>
+        <Button variant="ghost" size="sm">
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t">
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          ) : error ? (
+            <p className="text-sm text-destructive">Failed to load vote breakdown</p>
+          ) : votes.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {votes.map((vote) => (
+                <div key={vote.vote_id} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <Link
+                      to={`/legislators/${vote.people_id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {vote.name}
+                    </Link>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {vote.party && (
+                        <Badge variant="outline" className="text-xs">
+                          {vote.party}
+                        </Badge>
+                      )}
+                      {vote.district && <span>District {vote.district}</span>}
+                    </div>
+                  </div>
+                  <span className={`text-sm font-medium ${getVoteColor(vote.vote || '')}`}>
+                    {vote.vote || 'Unknown'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No vote breakdown available</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

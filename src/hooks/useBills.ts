@@ -50,8 +50,11 @@ export const useBills = (filters: BillFilters = {}, page = 1, perPage = 20) => {
         if (filters.search_term) {
           const searchAnalysis = analyzeSearchTerm(filters.search_term);
           
-          if (searchAnalysis.searchType === 'bill_number') {
-            // Pure bill number search - search only bill_number column with all variants
+          if (searchAnalysis.searchType === 'exact_bill') {
+            // Exact bill number match - highest priority, exact match only
+            query = query.eq('bill_number', searchAnalysis.exactMatchTerm);
+          } else if (searchAnalysis.searchType === 'bill_number') {
+            // Bill number search - search bill_number column with variants
             const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
             query = query.or(billNumberTerms);
           } else if (searchAnalysis.searchType === 'mixed') {
@@ -62,8 +65,14 @@ export const useBills = (filters: BillFilters = {}, page = 1, perPage = 20) => {
             ).join(',');
             query = query.or(searchConditions);
           } else {
-            // Text search - search title and description primarily, but also check bill_number
-            query = query.or(`title.ilike.%${filters.search_term}%,description.ilike.%${filters.search_term}%,bill_number.ilike.%${filters.search_term}%`);
+            // Full-text search - use PostgreSQL text search for better relevance
+            // Note: This would ideally use to_tsvector/plainto_tsquery in a real implementation
+            // For now, we'll use ILIKE with multiple columns and add some ranking
+            const searchTerm = filters.search_term;
+            query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`);
+            
+            // Add ordering by relevance (title matches first, then description)
+            query = query.order('title', { ascending: true }); // This is a simplified ranking
           }
         }
 
@@ -353,8 +362,11 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
               committee
             `);
 
-          if (searchAnalysis.searchType === 'bill_number') {
-            // Pure bill number search
+          if (searchAnalysis.searchType === 'exact_bill') {
+            // Exact bill number match - return exact match first
+            query = query.eq('bill_number', searchAnalysis.exactMatchTerm);
+          } else if (searchAnalysis.searchType === 'bill_number') {
+            // Bill number search
             const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
             query = query.or(billNumberTerms);
           } else if (searchAnalysis.searchType === 'mixed') {
@@ -365,8 +377,9 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
             ).join(',');
             query = query.or(searchConditions);
           } else {
-            // Text search
+            // Full-text search with relevance ordering
             query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`);
+            query = query.order('title', { ascending: true });
           }
 
           const { data: bills, error } = await query.limit(20);

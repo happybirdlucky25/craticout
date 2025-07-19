@@ -5,64 +5,73 @@ export interface BillNumberMapping {
   legiscanPattern: RegExp;
   federalFormat: (number: string) => string;
   legiscanFormat: (number: string) => string;
+  userInputPatterns: RegExp[];
 }
 
-// Comprehensive mapping of bill types
+// Comprehensive mapping of bill types with LegiScan compatibility
 const BILL_TYPE_MAPPINGS: BillNumberMapping[] = [
-  // House Bills
+  // House Bills: HB7 → HR7 (LegiScan format)
   {
-    legiscanPattern: /^HB\s*(\d+)$/i,
+    legiscanPattern: /^HR\s*(\d+)$/i, // LegiScan stores as HR
     federalFormat: (num) => `H.R. ${num}`,
-    legiscanFormat: (num) => `HB${num}`
+    legiscanFormat: (num) => `HR${num}`,
+    userInputPatterns: [/^HB\s*(\d+)$/i, /^H\.R\.\s*(\d+)$/i, /^HR\s*(\d+)$/i]
   },
   
-  // Senate Bills
+  // Senate Bills: SB74 → SR74 (LegiScan format) 
   {
-    legiscanPattern: /^SB\s*(\d+)$/i,
+    legiscanPattern: /^SR\s*(\d+)$/i, // LegiScan stores as SR
     federalFormat: (num) => `S. ${num}`,
-    legiscanFormat: (num) => `SB${num}`
+    legiscanFormat: (num) => `SR${num}`,
+    userInputPatterns: [/^SB\s*(\d+)$/i, /^S\.\s*(\d+)$/i, /^SR\s*(\d+)$/i]
   },
   
   // House Resolutions
   {
-    legiscanPattern: /^HR\s*(\d+)$/i,
+    legiscanPattern: /^HRES\s*(\d+)$/i, // LegiScan stores as HRES
     federalFormat: (num) => `H.Res. ${num}`,
-    legiscanFormat: (num) => `HR${num}`
+    legiscanFormat: (num) => `HRES${num}`,
+    userInputPatterns: [/^HR\s*(\d+)$/i, /^H\.RES\.\s*(\d+)$/i, /^HRES\s*(\d+)$/i]
   },
   
-  // Senate Resolutions
+  // Senate Resolutions  
   {
-    legiscanPattern: /^SR\s*(\d+)$/i,
+    legiscanPattern: /^SRES\s*(\d+)$/i, // LegiScan stores as SRES
     federalFormat: (num) => `S.Res. ${num}`,
-    legiscanFormat: (num) => `SR${num}`
+    legiscanFormat: (num) => `SRES${num}`,
+    userInputPatterns: [/^SR\s*(\d+)$/i, /^S\.RES\.\s*(\d+)$/i, /^SRES\s*(\d+)$/i]
   },
   
   // House Joint Resolutions
   {
     legiscanPattern: /^HJR\s*(\d+)$/i,
     federalFormat: (num) => `H.J.Res. ${num}`,
-    legiscanFormat: (num) => `HJR${num}`
+    legiscanFormat: (num) => `HJR${num}`,
+    userInputPatterns: [/^HJR\s*(\d+)$/i, /^H\.J\.RES\.\s*(\d+)$/i]
   },
   
   // Senate Joint Resolutions
   {
     legiscanPattern: /^SJR\s*(\d+)$/i,
     federalFormat: (num) => `S.J.Res. ${num}`,
-    legiscanFormat: (num) => `SJR${num}`
+    legiscanFormat: (num) => `SJR${num}`,
+    userInputPatterns: [/^SJR\s*(\d+)$/i, /^S\.J\.RES\.\s*(\d+)$/i]
   },
   
   // House Concurrent Resolutions
   {
-    legiscanPattern: /^HCR\s*(\d+)$/i,
+    legiscanPattern: /^HCONRES\s*(\d+)$/i,
     federalFormat: (num) => `H.Con.Res. ${num}`,
-    legiscanFormat: (num) => `HCR${num}`
+    legiscanFormat: (num) => `HCONRES${num}`,
+    userInputPatterns: [/^HCR\s*(\d+)$/i, /^H\.CON\.RES\.\s*(\d+)$/i, /^HCONRES\s*(\d+)$/i]
   },
   
   // Senate Concurrent Resolutions
   {
-    legiscanPattern: /^SCR\s*(\d+)$/i,
+    legiscanPattern: /^SCONRES\s*(\d+)$/i,
     federalFormat: (num) => `S.Con.Res. ${num}`,
-    legiscanFormat: (num) => `SCR${num}`
+    legiscanFormat: (num) => `SCONRES${num}`,
+    userInputPatterns: [/^SCR\s*(\d+)$/i, /^S\.CON\.RES\.\s*(\d+)$/i, /^SCONRES\s*(\d+)$/i]
   }
 ];
 
@@ -117,33 +126,58 @@ export function formatBillNumber(billNumber: string | null | undefined): string 
 }
 
 /**
- * Normalizes user input to LegiScan format for database searching
- * @param input - User input (e.g., "H.R. 123", "hb 45", "SJR44")
- * @returns LegiScan format (e.g., "HB123") or original if no normalization needed
+ * Normalizes user input for bill number searching with enhanced exact matching
+ * @param input - User input (e.g., "H.R. 123", "hb 45", "SJR44") 
+ * @returns Object with normalized input and exact match candidate
+ */
+export function normalizeInputForSearch(input: string): {
+  normalizedInput: string;
+  exactMatchTerm: string | null;
+  isExactBillNumber: boolean;
+} {
+  if (!input) {
+    return {
+      normalizedInput: input,
+      exactMatchTerm: null,
+      isExactBillNumber: false
+    };
+  }
+  
+  // Normalize: strip spaces, punctuation, lowercase
+  const normalized = input.trim()
+    .replace(/[^\w\d]/g, '') // Remove all punctuation and spaces
+    .toLowerCase();
+  
+  // Check if this looks like an exact bill number
+  for (const mapping of BILL_TYPE_MAPPINGS) {
+    // Check all user input patterns for this bill type
+    for (const pattern of mapping.userInputPatterns) {
+      const match = input.trim().match(pattern);
+      if (match) {
+        return {
+          normalizedInput: normalized,
+          exactMatchTerm: mapping.legiscanFormat(match[1]),
+          isExactBillNumber: true
+        };
+      }
+    }
+  }
+  
+  return {
+    normalizedInput: normalized,
+    exactMatchTerm: null,
+    isExactBillNumber: false
+  };
+}
+
+/**
+ * Legacy function - now calls the enhanced version
+ * @param input - User input
+ * @returns LegiScan format or original
  */
 export function normalizeToLegiScanFormat(input: string): string {
-  if (!input) return input;
-  
-  const trimmed = input.trim().replace(/\s+/g, ' '); // Normalize whitespace
-  
-  // Try federal patterns first
-  for (const { pattern, normalize } of FEDERAL_PATTERNS) {
-    const match = trimmed.match(pattern);
-    if (match) {
-      return normalize(match);
-    }
-  }
-  
-  // Try LegiScan patterns (normalize spacing and case)
-  for (const mapping of BILL_TYPE_MAPPINGS) {
-    const match = trimmed.match(mapping.legiscanPattern);
-    if (match) {
-      return mapping.legiscanFormat(match[1]);
-    }
-  }
-  
-  // Return original if no pattern matches
-  return trimmed;
+  const result = normalizeInputForSearch(input);
+  return result.exactMatchTerm || result.normalizedInput;
 }
 
 /**
@@ -218,31 +252,50 @@ export function validateBillNumber(input: string): string | null {
 }
 
 /**
- * Enhanced bill number search that handles both bill numbers and text search
+ * Enhanced bill number search that prioritizes exact matches and handles full-text search
  * @param searchTerm - User search input
- * @returns Object with search strategies
+ * @returns Object with search strategies including exact match priority
  */
 export function analyzeSearchTerm(searchTerm: string): {
   isBillNumber: boolean;
   searchTerms: string[];
-  searchType: 'bill_number' | 'text' | 'mixed';
+  searchType: 'exact_bill' | 'bill_number' | 'text' | 'mixed';
+  exactMatchTerm: string | null;
+  normalizedInput: string;
 } {
   if (!searchTerm) {
     return {
       isBillNumber: false,
       searchTerms: [],
-      searchType: 'text'
+      searchType: 'text',
+      exactMatchTerm: null,
+      normalizedInput: ''
+    };
+  }
+  
+  const searchAnalysis = normalizeInputForSearch(searchTerm);
+  
+  // Exact bill number match - highest priority
+  if (searchAnalysis.isExactBillNumber && searchAnalysis.exactMatchTerm) {
+    return {
+      isBillNumber: true,
+      searchTerms: [searchAnalysis.exactMatchTerm],
+      searchType: 'exact_bill',
+      exactMatchTerm: searchAnalysis.exactMatchTerm,
+      normalizedInput: searchAnalysis.normalizedInput
     };
   }
   
   const trimmed = searchTerm.trim();
   
-  // Check if it's a pure bill number
+  // Check if it's a general bill number pattern
   if (isBillNumber(trimmed)) {
     return {
       isBillNumber: true,
       searchTerms: generateBillNumberSearchTerms(trimmed),
-      searchType: 'bill_number'
+      searchType: 'bill_number',
+      exactMatchTerm: null,
+      normalizedInput: searchAnalysis.normalizedInput
     };
   }
   
@@ -262,14 +315,18 @@ export function analyzeSearchTerm(searchTerm: string): {
     return {
       isBillNumber: false,
       searchTerms: Array.from(allTerms),
-      searchType: 'mixed'
+      searchType: 'mixed',
+      exactMatchTerm: null,
+      normalizedInput: searchAnalysis.normalizedInput
     };
   }
   
-  // Pure text search
+  // Pure text search with full-text search capability
   return {
     isBillNumber: false,
     searchTerms: [trimmed],
-    searchType: 'text'
+    searchType: 'text',
+    exactMatchTerm: null,
+    normalizedInput: searchAnalysis.normalizedInput
   };
 }

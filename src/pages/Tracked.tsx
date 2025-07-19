@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBillNumber } from "@/utils/billNumberFormatter";
+import { useTrackedBills, useTrackedLegislators, useBillTracking, useLegislatorTracking, useTrackingStats } from "@/hooks/useTracking";
 import { toast } from "sonner";
 import { 
   FileText, 
@@ -22,17 +23,14 @@ import {
   TrendingUp
 } from "lucide-react";
 import { useBills } from "@/hooks/useBills";
-import { useLegislators } from "@/hooks/useLegislators";
 import type { Bill, Person } from "@/types/database";
 
 interface TrackedBillsProps {
   onUntrack: (billId: string) => void;
-  trackedBillIds: string[];
 }
 
 interface TrackedLegislatorsProps {
   onUntrack: (personId: string) => void;
-  trackedPersonIds: string[];
 }
 
 const TrackedBillCard = ({ 
@@ -197,16 +195,12 @@ const TrackedLegislatorCard = ({
   );
 };
 
-const TrackedBills = ({ onUntrack, trackedBillIds }: TrackedBillsProps) => {
-  // For now, we'll use a placeholder approach since we don't have user tracking in the database yet
-  // In a real implementation, this would fetch bills based on user's tracked bill IDs
-  const { data: billsData, loading, error } = useBills({}, 1, 20);
+const TrackedBills = ({ onUntrack }: { onUntrack: (billId: string) => void }) => {
+  const { data: trackedBillsData, loading, error } = useTrackedBills();
   
-  // Mock tracked bills by taking first few bills (in real app, would filter by tracked IDs)
   const trackedBills = useMemo(() => {
-    if (!billsData?.bills) return [];
-    return billsData.bills.slice(0, 3); // Mock: show first 3 as "tracked"
-  }, [billsData]);
+    return trackedBillsData?.map(item => item.bill).filter(Boolean) || [];
+  }, [trackedBillsData]);
 
   if (loading) {
     return (
@@ -283,15 +277,12 @@ const TrackedBills = ({ onUntrack, trackedBillIds }: TrackedBillsProps) => {
   );
 };
 
-const TrackedLegislators = ({ onUntrack, trackedPersonIds }: TrackedLegislatorsProps) => {
-  // For now, we'll use a placeholder approach since we don't have user tracking in the database yet
-  const { data: legislatorsData, loading, error } = useLegislators({}, 1, 20);
+const TrackedLegislators = ({ onUntrack }: { onUntrack: (personId: string) => void }) => {
+  const { data: trackedLegislatorsData, loading, error } = useTrackedLegislators();
   
-  // Mock tracked legislators by taking first few (in real app, would filter by tracked IDs)
   const trackedLegislators = useMemo(() => {
-    if (!legislatorsData?.people) return [];
-    return legislatorsData.people.slice(0, 2); // Mock: show first 2 as "tracked"
-  }, [legislatorsData]);
+    return trackedLegislatorsData?.map(item => item.person).filter(Boolean) || [];
+  }, [trackedLegislatorsData]);
 
   if (loading) {
     return (
@@ -371,40 +362,51 @@ const TrackedLegislators = ({ onUntrack, trackedPersonIds }: TrackedLegislatorsP
 const Tracked = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("bills");
-  
-  // Mock tracked IDs - in real app, these would come from user preferences/database
-  const [trackedBillIds, setTrackedBillIds] = useState<string[]>([]);
-  const [trackedPersonIds, setTrackedPersonIds] = useState<string[]>([]);
+  const { untrackBill } = useBillTracking();
+  const { untrackLegislator } = useLegislatorTracking();
+  const { data: trackingStats, loading: statsLoading } = useTrackingStats();
 
-  const handleUntrackBill = (billId: string) => {
-    setTrackedBillIds(prev => prev.filter(id => id !== billId));
-    toast.success("Bill removed from tracking");
+  const handleUntrackBill = async (billId: string) => {
+    const success = await untrackBill(billId);
+    if (success) {
+      toast.success("Bill removed from tracking");
+      window.location.reload(); // Refresh to update counts
+    }
   };
 
-  const handleUntrackLegislator = (personId: string) => {
-    setTrackedPersonIds(prev => prev.filter(id => id !== personId));
-    toast.success("Legislator removed from tracking");
+  const handleUntrackLegislator = async (personId: string) => {
+    const success = await untrackLegislator(personId);
+    if (success) {
+      toast.success("Legislator removed from tracking");
+      window.location.reload(); // Refresh to update counts
+    }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Tracked Items</h1>
-        <p className="text-muted-foreground">
-          Monitor your tracked bills and legislators for updates and activity.
-        </p>
-      </div>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">My Tracked Items</h1>
+          <p className="text-muted-foreground">
+            Monitor your tracked bills and legislators for updates and activity.
+          </p>
+        </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/* Tracking Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
               <FileText className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Tracked Bills</p>
-                <p className="text-2xl font-bold">3</p>
+                {statsLoading ? (
+                  <div className="h-8 w-12 bg-gray-200 animate-pulse rounded"></div>
+                ) : (
+                  <div>
+                    <p className="text-2xl font-bold">{trackingStats?.tracked_bills_count || 0}</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -416,19 +418,13 @@ const Tracked = () => {
               <Users className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Tracked Legislators</p>
-                <p className="text-2xl font-bold">2</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Activity className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Recent Updates</p>
-                <p className="text-2xl font-bold">7</p>
+                {statsLoading ? (
+                  <div className="h-8 w-12 bg-gray-200 animate-pulse rounded"></div>
+                ) : (
+                  <div>
+                    <p className="text-2xl font-bold">{trackingStats?.tracked_legislators_count || 0}</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -451,14 +447,12 @@ const Tracked = () => {
         <TabsContent value="bills" className="space-y-6">
           <TrackedBills 
             onUntrack={handleUntrackBill}
-            trackedBillIds={trackedBillIds}
           />
         </TabsContent>
 
         <TabsContent value="legislators" className="space-y-6">
           <TrackedLegislators 
             onUntrack={handleUntrackLegislator}
-            trackedPersonIds={trackedPersonIds}
           />
         </TabsContent>
       </Tabs>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useBills, useBillStatuses, useBillCommittees } from "@/hooks/useBills";
+import { useBillTracking } from "@/hooks/useTracking";
 import { formatBillNumber, isBillNumber } from "@/utils/billNumberFormatter";
 import type { BillFilters } from "@/types/database";
 import { Input } from "@/components/ui/input";
@@ -175,6 +176,13 @@ const BillCard = ({
   isTracked: boolean;
 }) => {
   const navigate = useNavigate();
+  
+  const handleBillClick = () => {
+    // Store the current search state for "Back" functionality
+    const currentSearch = window.location.search;
+    sessionStorage.setItem('lastSearchState', currentSearch);
+    navigate(`/bills/${bill.bill_id}`);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -202,7 +210,7 @@ const BillCard = ({
 
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-      <CardHeader onClick={() => navigate(`/bills/${bill.bill_id}`)}>
+      <CardHeader onClick={handleBillClick}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
@@ -242,7 +250,7 @@ const BillCard = ({
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent onClick={() => navigate(`/bills/${bill.bill_id}`)}>
+      <CardContent onClick={handleBillClick}>
         <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
           {bill.description || 'No description available.'}
         </p>
@@ -305,6 +313,8 @@ const PaginationControls = ({
   );
 };
 
+import { useCampaigns } from "@/hooks/useCampaigns";
+
 const TrackBillModal = ({ 
   bill, 
   isOpen, 
@@ -317,12 +327,7 @@ const TrackBillModal = ({
   onConfirm: (campaignId?: string) => void;
 }) => {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  
-  const campaigns = [
-    { id: "1", name: "Clean Energy Initiative" },
-    { id: "2", name: "Education Reform Coalition" },
-    { id: "3", name: "Healthcare Access Campaign" }
-  ];
+  const { campaigns, loading: campaignsLoading, error: campaignsError } = useCampaigns();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -344,17 +349,23 @@ const TrackBillModal = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Track individually</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </SelectItem>
-                ))}
+                {campaignsLoading ? (
+                  <SelectItem value="loading" disabled>Loading campaigns...</SelectItem>
+                ) : campaignsError ? (
+                  <SelectItem value="error" disabled>Error loading campaigns</SelectItem>
+                ) : (
+                  campaigns.map(campaign => (
+                    <SelectItem key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
           
           <div className="flex gap-2 pt-4">
-            <Button onClick={() => onConfirm(selectedCampaign || undefined)} className="flex-1">
+            <Button onClick={() => onConfirm(selectedCampaign === "none" ? undefined : selectedCampaign)} className="flex-1">
               Start Tracking
             </Button>
             <Button variant="outline" onClick={onClose}>
@@ -370,6 +381,7 @@ const TrackBillModal = ({
 const Search = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { trackBill, untrackBill, isTracking } = useBillTracking();
   
   // Search state
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
@@ -447,31 +459,58 @@ const Search = () => {
     setSearchParams(params);
   }, [searchTerm, selectedState, setSearchParams]);
 
-  const handleTrackBill = useCallback((bill: any) => {
+  // Load tracking status for bills when they change
+  useEffect(() => {
+    const loadTrackingStatus = async () => {
+      if (!searchResults.length) return;
+      
+      const trackingStatus = new Set<string>();
+      for (const bill of searchResults) {
+        const billId = bill.bill_id || bill.id;
+        if (billId && await isTracking(billId)) {
+          trackingStatus.add(billId);
+        }
+      }
+      setTrackedBills(trackingStatus);
+    };
+
+    loadTrackingStatus();
+  }, [searchResults, isTracking]);
+
+  const handleTrackBill = useCallback(async (bill: any) => {
     const billId = bill.bill_id || bill.id;
+    
     if (trackedBills.has(billId)) {
-      setTrackedBills(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(billId);
-        return newSet;
-      });
-      toast.success("Bill removed from tracking");
+      // Untrack the bill
+      const success = await untrackBill(billId);
+      if (success) {
+        setTrackedBills(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(billId);
+          return newSet;
+        });
+        toast.success("Bill removed from tracking");
+      }
     } else {
       setTrackingBill(bill);
     }
-  }, [trackedBills]);
+  }, [trackedBills, untrackBill]);
 
-  const confirmTrackBill = useCallback((campaignId?: string) => {
+  const confirmTrackBill = useCallback(async (campaignId?: string) => {
     if (trackingBill) {
       const billId = trackingBill.bill_id || trackingBill.id;
-      setTrackedBills(prev => new Set(prev).add(billId));
-      const message = campaignId 
-        ? "Bill added to campaign and tracking" 
-        : "Bill added to tracking";
-      toast.success(message);
-      setTrackingBill(null);
+      const result = await trackBill(billId, campaignId);
+      
+      if (result) {
+        setTrackedBills(prev => new Set(prev).add(billId));
+        const message = campaignId 
+          ? "Bill added to campaign and tracking" 
+          : "Bill added to tracking";
+        toast.success(message);
+        setTrackingBill(null);
+      }
     }
-  }, [trackingBill]);
+  }, [trackingBill, trackBill]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     setSearchTerm(suggestion);

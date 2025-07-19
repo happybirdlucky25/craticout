@@ -43,3 +43,50 @@ export const useCampaigns = () => {
 
   return { campaigns, loading, error };
 };
+
+// Hook for campaign operations (create, update, delete)
+export const useCampaignOperations = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createCampaign = async (campaignData: {
+    name: string;
+    description?: string;
+  }): Promise<Campaign | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Use development user ID
+      const user = { id: '00000000-0000-0000-0000-000000000001' };
+
+      const { data: campaign, error } = await supabase
+        .from('campaigns')
+        .insert([
+          {
+            user_id: user.id,
+            name: campaignData.name,
+            description: campaignData.description,
+            status: 'active'
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return campaign;
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create campaign');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    createCampaign,
+    loading,
+    error
+  };
+};

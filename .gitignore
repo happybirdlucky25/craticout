@@ -1,0 +1,27 @@
+# Windows system files
+NTUSER.DAT*
+ntuser.dat*
+ntuser.ini
+AppData/
+Local Settings/
+Cookies/
+Recent/
+SendTo/
+PrintHood/
+NetHood/
+Start Menu/
+Templates/
+Application Data/
+My Documents/
+
+# VS Code extensions (typically shouldn't be committed)
+.vscode/extensions/
+
+# Claude local files
+.claude/
+
+# Node modules
+node_modules/
+
+# Windows shortcuts
+*.lnk

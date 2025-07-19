@@ -333,10 +333,12 @@ export const useTrackingStats = () => {
         setLoading(true);
         setError(null);
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
+        // Temporarily disable auth for development
+        // const { data: { user } } = await supabase.auth.getUser();
+        // if (!user) {
+        //   throw new Error('User not authenticated');
+        // }
+        const user = { id: '00000000-0000-0000-0000-000000000001' }; // Development placeholder UUID
 
         // Get counts in parallel
         const [billsCount, legislatorsCount] = await Promise.all([

@@ -15,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { useBills, useBillSearch } from "@/hooks/useBills";
+import { useCampaignOperations } from "@/hooks/useCampaigns";
 import { toast } from "sonner";
 import { 
   Plus, 
@@ -222,67 +224,46 @@ export const StakeholdersTab = ({
   );
 };
 
-// Enhanced Bills Tab with Embedded Search
+// Enhanced Bills Tab with Real Search Integration
 export const BillsTab = ({ 
+  campaignId,
   bills, 
   onRemove, 
-  onAddBill 
+  onRefresh 
 }: { 
+  campaignId: string;
   bills: any[]; 
   onRemove: (id: string) => void;
-  onAddBill: (bill: any) => void;
+  onRefresh: () => void;
 }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  
+  // Use real bill search hook
+  const { data: searchResults, loading: searchLoading } = useBillSearch(searchTerm);
+  const { addBillToCampaign } = useCampaignOperations();
 
-  // Mock search functionality
-  const mockSearchResults = [
-    {
-      id: "3",
-      billNumber: "H.R. 2468",
-      title: "Green Infrastructure Investment Act",
-      status: "Introduced",
-      sponsor: "Rep. Martinez",
-      chamber: "House",
-      lastAction: "Introduced in House",
-      lastActionDate: "2024-01-18"
-    },
-    {
-      id: "4",
-      billNumber: "S. 890",
-      title: "Clean Transportation Initiative",
-      status: "In Committee",
-      sponsor: "Sen. Thompson",
-      chamber: "Senate", 
-      lastAction: "Referred to Environment Committee",
-      lastActionDate: "2024-01-19"
+  const handleAddBill = async (bill: any) => {
+    const success = await addBillToCampaign(campaignId, bill.bill_id);
+    if (success) {
+      toast.success("Bill added to campaign");
+      onRefresh();
+      setSearchTerm("");
+    } else {
+      toast.error("Failed to add bill to campaign");
     }
-  ];
-
-  const performSearch = () => {
-    if (!searchTerm.trim()) return;
-    
-    setIsSearching(true);
-    setTimeout(() => {
-      setSearchResults(mockSearchResults);
-      setIsSearching(false);
-    }, 1000);
-  };
-
-  const handleAddBill = (bill: any) => {
-    onAddBill(bill);
-    setSearchResults(searchResults.filter(b => b.id !== bill.id));
-    toast.success("Bill added to campaign");
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'passed': return 'bg-green-100 text-green-800';
       case 'signed': return 'bg-blue-100 text-blue-800';
-      case 'in committee': return 'bg-yellow-100 text-yellow-800';
+      case 'in committee': 
+      case 'committee': return 'bg-yellow-100 text-yellow-800';
       case 'introduced': return 'bg-gray-100 text-gray-800';
+      case 'failed':
+      case 'vetoed': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -292,7 +273,7 @@ export const BillsTab = ({
       <div>
         <h3 className="text-lg font-medium mb-4">Campaign Bills</h3>
         
-        {/* Embedded Search */}
+        {/* Real Bill Search */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-base">Add Bills to Campaign</CardTitle>
@@ -305,38 +286,54 @@ export const BillsTab = ({
                   placeholder="Search bills by title, number, or keywords..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && performSearch()}
                   className="pl-10"
                 />
               </div>
-              <Button onClick={performSearch} disabled={isSearching}>
-                {isSearching ? "Searching..." : "Search"}
+              <Button 
+                onClick={() => setShowSearch(!showSearch)}
+                variant={showSearch ? "default" : "outline"}
+              >
+                {showSearch ? "Hide Search" : "Show Search"}
               </Button>
             </div>
             
-            {searchResults.length > 0 && (
+            {showSearch && searchTerm && (
               <div className="space-y-2">
                 <Label>Search Results:</Label>
-                {searchResults.map((bill) => (
-                  <div key={bill.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline">{bill.billNumber}</Badge>
-                        <Badge className={`${getStatusColor(bill.status)} text-xs`}>
-                          {bill.status}
-                        </Badge>
-                      </div>
-                      <div className="font-medium">{bill.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {bill.sponsor} • {bill.chamber}
-                      </div>
-                    </div>
-                    <Button size="sm" onClick={() => handleAddBill(bill)}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
+                {searchLoading ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto"></div>
+                    <p className="text-sm text-muted-foreground mt-2">Searching bills...</p>
                   </div>
-                ))}
+                ) : searchResults?.bills?.length > 0 ? (
+                  searchResults.bills.map((bill: any) => (
+                    <div key={bill.bill_id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline">{bill.bill_number}</Badge>
+                          <Badge className={`${getStatusColor(bill.status)} text-xs`}>
+                            {bill.status || 'Unknown'}
+                          </Badge>
+                        </div>
+                        <div className="font-medium">{bill.title}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {bill.description && bill.description.length > 100 
+                            ? `${bill.description.substring(0, 100)}...` 
+                            : bill.description}
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => handleAddBill(bill)}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  ))
+                ) : searchTerm && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p>No bills found for "{searchTerm}"</p>
+                    <p className="text-sm">Try different keywords or bill numbers</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -345,65 +342,73 @@ export const BillsTab = ({
 
       {/* Campaign Bills List */}
       <div>
-        {bills.length > 0 ? (
+        {bills?.length > 0 ? (
           <div className="space-y-4">
-            {bills.map((bill) => (
-              <Card key={bill.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/bills/${bill.id}`)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">{bill.billNumber}</Badge>
-                        <Badge className={`${getStatusColor(bill.status)} text-xs`}>
-                          {bill.status}
-                        </Badge>
-                      </div>
-                      <h4 className="font-medium mb-1">{bill.title}</h4>
-                      <div className="text-sm text-muted-foreground">
-                        <div>{bill.sponsor} • {bill.chamber}</div>
-                        <div>Last action: {bill.lastAction} ({new Date(bill.lastActionDate).toLocaleDateString()})</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => navigate(`/bills/${bill.id}`)}
+            {bills.map((campaignBill: any) => {
+              const bill = campaignBill.bill || campaignBill;
+              return (
+                <Card key={campaignBill.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between">
+                      <div 
+                        className="flex-1 cursor-pointer"
+                        onClick={() => navigate(`/bills/${bill.bill_id}`)}
                       >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="ghost">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove bill from campaign?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove "{bill.title}" from this campaign.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => {
-                              onRemove(bill.id);
-                              toast.success("Bill removed from campaign");
-                            }}>
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{bill.bill_number}</Badge>
+                          <Badge className={`${getStatusColor(bill.status)} text-xs`}>
+                            {bill.status || 'Unknown'}
+                          </Badge>
+                        </div>
+                        <h4 className="font-medium mb-1">{bill.title}</h4>
+                        <div className="text-sm text-muted-foreground">
+                          <div>{bill.description}</div>
+                          {bill.last_action && (
+                            <div>Last action: {bill.last_action} ({new Date(bill.last_action_date || '').toLocaleDateString()})</div>
+                          )}
+                          {campaignBill.notes && (
+                            <div className="mt-1"><strong>Notes:</strong> {campaignBill.notes}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => navigate(`/bills/${bill.bill_id}`)}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove bill from campaign?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove "{bill.title}" from this campaign.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => {
+                                onRemove(campaignBill.id);
+                                toast.success("Bill removed from campaign");
+                              }}>
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
@@ -417,28 +422,27 @@ export const BillsTab = ({
   );
 };
 
-// Analysis Tab with File Upload and AI Report Generation
+// Analysis Tab with Real File Upload Integration
 export const AnalysisTab = ({ 
+  campaignId,
   files, 
   bills, 
   reports,
-  onFileUpload, 
-  onFileRemove, 
-  onGenerateReport 
+  onRefresh
 }: {
+  campaignId: string;
   files: any[];
   bills: any[];
   reports: any[];
-  onFileUpload: (file: File) => void;
-  onFileRemove: (id: string) => void;
-  onGenerateReport: (data: any) => void;
+  onRefresh: () => void;
 }) => {
   const [selectedBills, setSelectedBills] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [reportType, setReportType] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const { uploadCampaignDocument, removeCampaignDocument } = useCampaignOperations();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -458,21 +462,21 @@ export const AnalysisTab = ({
       return;
     }
 
-    // Mock upload progress
+    // Real file upload
     setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev === null) return null;
-        if (prev >= 100) {
-          clearInterval(interval);
-          onFileUpload(file);
-          setUploadProgress(null);
-          toast.success("File uploaded successfully");
-          return null;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    const success = await uploadCampaignDocument(campaignId, file);
+    
+    if (success) {
+      setUploadProgress(100);
+      setTimeout(() => {
+        setUploadProgress(null);
+        onRefresh();
+        toast.success("File uploaded successfully");
+      }, 500);
+    } else {
+      setUploadProgress(null);
+      toast.error("Failed to upload file");
+    }
   };
 
   const handleGenerateReport = () => {
@@ -481,18 +485,24 @@ export const AnalysisTab = ({
       return;
     }
 
-    onGenerateReport({
-      billIds: selectedBills,
-      fileIds: selectedFiles,
-      reportType
-    });
+    // Placeholder for AI report generation
+    // TODO: Implement actual AI report generation
+    toast.success("Report requested – AI analysis coming soon!");
 
     // Reset form
     setSelectedBills([]);
     setSelectedFiles([]);
     setReportType("");
-    
-    toast.success("Report requested – check your Reports Inbox shortly");
+  };
+
+  const handleRemoveFile = async (fileId: string) => {
+    const success = await removeCampaignDocument(fileId);
+    if (success) {
+      onRefresh();
+      toast.success("File removed successfully");
+    } else {
+      toast.error("Failed to remove file");
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -556,7 +566,7 @@ export const AnalysisTab = ({
                         <Eye className="h-4 w-4" />
                       </a>
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onFileRemove(file.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveFile(file.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

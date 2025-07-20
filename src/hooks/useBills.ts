@@ -1,6 +1,7 @@
 // 🏛️ Bills Data Fetching Hook
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { analyzeSearchTerm, generateBillNumberSearchTerms } from '@/utils/billNumberFormatter';
 import type { 
   Bill, 
   BillWithSponsors, 
@@ -47,7 +48,32 @@ export const useBills = (filters: BillFilters = {}, page = 1, perPage = 20) => {
         }
 
         if (filters.search_term) {
-          query = query.or(`title.ilike.%${filters.search_term}%,description.ilike.%${filters.search_term}%,bill_number.ilike.%${filters.search_term}%`);
+          const searchAnalysis = analyzeSearchTerm(filters.search_term);
+          
+          if (searchAnalysis.searchType === 'exact_bill') {
+            // Exact bill number match - highest priority, exact match only
+            query = query.eq('bill_number', searchAnalysis.exactMatchTerm);
+          } else if (searchAnalysis.searchType === 'bill_number') {
+            // Bill number search - search bill_number column with variants
+            const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
+            query = query.or(billNumberTerms);
+          } else if (searchAnalysis.searchType === 'mixed') {
+            // Mixed search - search all columns with original term plus bill number variants
+            const allTerms = searchAnalysis.searchTerms;
+            const searchConditions = allTerms.map(term => 
+              `title.ilike.%${term}%,description.ilike.%${term}%,bill_number.ilike.%${term}%`
+            ).join(',');
+            query = query.or(searchConditions);
+          } else {
+            // Full-text search - use PostgreSQL text search for better relevance
+            // Note: This would ideally use to_tsvector/plainto_tsquery in a real implementation
+            // For now, we'll use ILIKE with multiple columns and add some ranking
+            const searchTerm = filters.search_term;
+            query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`);
+            
+            // Add ordering by relevance (title matches first, then description)
+            query = query.order('title', { ascending: true }); // This is a simplified ranking
+          }
         }
 
         if (filters.session_id) {
@@ -324,7 +350,8 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
           setLoading(true);
           setError(null);
 
-          const { data: bills, error } = await supabase
+          const searchAnalysis = analyzeSearchTerm(searchTerm);
+          let query = supabase
             .from('bills')
             .select(`
               bill_id,
@@ -333,9 +360,29 @@ export const useBillSearch = (searchTerm: string, debounceMs = 300) => {
               status,
               description,
               committee
-            `)
-            .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`)
-            .limit(20);
+            `);
+
+          if (searchAnalysis.searchType === 'exact_bill') {
+            // Exact bill number match - return exact match first
+            query = query.eq('bill_number', searchAnalysis.exactMatchTerm);
+          } else if (searchAnalysis.searchType === 'bill_number') {
+            // Bill number search
+            const billNumberTerms = searchAnalysis.searchTerms.map(term => `bill_number.ilike.%${term}%`).join(',');
+            query = query.or(billNumberTerms);
+          } else if (searchAnalysis.searchType === 'mixed') {
+            // Mixed search
+            const allTerms = searchAnalysis.searchTerms;
+            const searchConditions = allTerms.map(term => 
+              `title.ilike.%${term}%,description.ilike.%${term}%,bill_number.ilike.%${term}%`
+            ).join(',');
+            query = query.or(searchConditions);
+          } else {
+            // Full-text search with relevance ordering
+            query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,bill_number.ilike.%${searchTerm}%`);
+            query = query.order('title', { ascending: true });
+          }
+
+          const { data: bills, error } = await query.limit(20);
 
           if (error) throw error;
           setData(bills || []);

@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useBills, useBillStatuses, useBillCommittees } from "@/hooks/useBills";
+import { useBillTracking } from "@/hooks/useTracking";
+import { formatBillNumber, isBillNumber } from "@/utils/billNumberFormatter";
+import type { BillFilters } from "@/types/database";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,7 +104,7 @@ const SearchBar = ({
       <div className="relative">
         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search bills by title, number (e.g. H.R. 1234), or keywords..."
+          placeholder="Search bills by title, keywords, or bill number (e.g. HR123, H.R. 1234, SJR45)..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onSearch()}
@@ -172,29 +176,48 @@ const BillCard = ({
   isTracked: boolean;
 }) => {
   const navigate = useNavigate();
+  
+  const handleBillClick = () => {
+    // Store the current search state for "Back" functionality
+    const currentSearch = window.location.search;
+    sessionStorage.setItem('lastSearchState', currentSearch);
+    navigate(`/bills/${bill.bill_id}`);
+  };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'passed': return 'bg-green-100 text-green-800';
       case 'signed': return 'bg-blue-100 text-blue-800';
-      case 'in-committee': return 'bg-yellow-100 text-yellow-800';
+      case 'in committee': 
+      case 'committee': return 'bg-yellow-100 text-yellow-800';
       case 'introduced': return 'bg-gray-100 text-gray-800';
       case 'vetoed': return 'bg-red-100 text-red-800';
-      case 'dead': return 'bg-red-50 text-red-600';
+      case 'dead': 
+      case 'failed': return 'bg-red-50 text-red-600';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Unknown';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return 'Unknown';
     }
   };
 
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-      <CardHeader onClick={() => navigate(`/bills/${bill.id}`)}>
+      <CardHeader onClick={handleBillClick}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {bill.billNumber}
+              {formatBillNumber(bill.bill_number)}
             </Badge>
-            <Badge className={`text-xs ${getStatusColor(bill.status)}`}>
-              {bill.status}
+            <Badge className={`text-xs ${getStatusColor(bill.status || '')}`}>
+              {bill.status || 'Unknown'}
             </Badge>
           </div>
           <Button
@@ -215,24 +238,27 @@ const BillCard = ({
           </Button>
         </div>
         <CardTitle className="text-lg line-clamp-2 mb-2">
-          {bill.title}
+          {bill.title || 'Untitled Bill'}
         </CardTitle>
         <CardDescription className="flex items-center gap-4 text-sm">
-          <span>{bill.sponsor}</span>
-          <span>•</span>
-          <span>{bill.chamber}</span>
-          <span>•</span>
-          <span>{bill.state === 'federal' ? 'Federal' : bill.state}</span>
+          <span>{bill.committee || 'No Committee'}</span>
+          {bill.last_action_date && (
+            <>
+              <span>•</span>
+              <span>{formatDate(bill.last_action_date)}</span>
+            </>
+          )}
         </CardDescription>
       </CardHeader>
-      <CardContent onClick={() => navigate(`/bills/${bill.id}`)}>
+      <CardContent onClick={handleBillClick}>
         <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-          {bill.summary}
+          {bill.description || 'No description available.'}
         </p>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Last action: {bill.lastAction}</span>
-          <span>{new Date(bill.lastActionDate).toLocaleDateString()}</span>
-        </div>
+        {bill.last_action && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="truncate">Last action: {bill.last_action}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -287,6 +313,8 @@ const PaginationControls = ({
   );
 };
 
+import { useCampaigns } from "@/hooks/useCampaigns";
+
 const TrackBillModal = ({ 
   bill, 
   isOpen, 
@@ -299,18 +327,13 @@ const TrackBillModal = ({
   onConfirm: (campaignId?: string) => void;
 }) => {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
-  
-  const campaigns = [
-    { id: "1", name: "Clean Energy Initiative" },
-    { id: "2", name: "Education Reform Coalition" },
-    { id: "3", name: "Healthcare Access Campaign" }
-  ];
+  const { campaigns, loading: campaignsLoading, error: campaignsError } = useCampaigns();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Track Bill: {bill?.billNumber}</DialogTitle>
+          <DialogTitle>Track Bill: {bill?.bill_number || bill?.billNumber}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -326,17 +349,23 @@ const TrackBillModal = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Track individually</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </SelectItem>
-                ))}
+                {campaignsLoading ? (
+                  <SelectItem value="loading" disabled>Loading campaigns...</SelectItem>
+                ) : campaignsError ? (
+                  <SelectItem value="error" disabled>Error loading campaigns</SelectItem>
+                ) : (
+                  campaigns.map(campaign => (
+                    <SelectItem key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
           
           <div className="flex gap-2 pt-4">
-            <Button onClick={() => onConfirm(selectedCampaign || undefined)} className="flex-1">
+            <Button onClick={() => onConfirm(selectedCampaign === "none" ? undefined : selectedCampaign)} className="flex-1">
               Start Tracking
             </Button>
             <Button variant="outline" onClick={onClose}>
@@ -352,6 +381,7 @@ const TrackBillModal = ({
 const Search = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { trackBill, untrackBill, isTracking } = useBillTracking();
   
   // Search state
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
@@ -359,124 +389,179 @@ const Search = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [chamberFilter, setChamberFilter] = useState('all');
+  const [committeeFilter, setCommitteeFilter] = useState('all');
   
   // UI state
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [trackingBill, setTrackingBill] = useState<any>(null);
   const [trackedBills, setTrackedBills] = useState<Set<string>>(new Set());
+  const [hasSearched, setHasSearched] = useState(false);
   
-  // Mock search results
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const totalResults = 156;
+  // Results per page
   const resultsPerPage = 15;
+  
+  // Memoize filters to prevent unnecessary re-renders
+  const currentFilters = useMemo((): BillFilters => {
+    if (!hasSearched) return {};
+    
+    const filters: BillFilters = {};
+    
+    if (searchTerm.trim()) {
+      filters.search_term = searchTerm.trim();
+    }
+    
+    if (statusFilter !== 'all') {
+      filters.status = [statusFilter];
+    }
+    
+    if (committeeFilter !== 'all') {
+      filters.committee = [committeeFilter];
+    }
+    
+    return filters;
+  }, [hasSearched, searchTerm, statusFilter, committeeFilter]);
+  const { data: billsData, loading: isLoading, error } = useBills(
+    currentFilters, 
+    currentPage, 
+    resultsPerPage
+  );
+  
+  // Get filter options from database
+  const { data: statusOptions } = useBillStatuses();
+  const { data: committeeOptions } = useBillCommittees();
+  
+  // Memoize search results to prevent flickering
+  const searchResults = useMemo(() => {
+    return (hasSearched && billsData?.bills) ? billsData.bills : [];
+  }, [hasSearched, billsData?.bills]);
+  
+  const totalResults = useMemo(() => {
+    return (hasSearched && billsData?.total_count) ? billsData.total_count : 0;
+  }, [hasSearched, billsData?.total_count]);
+  
   const totalPages = Math.ceil(totalResults / resultsPerPage);
 
-  // Mock bill data
-  const mockBills = [
-    {
-      id: "1",
-      billNumber: "H.R. 1234",
-      title: "Clean Energy Infrastructure Investment Act",
-      status: "In Committee",
-      sponsor: "Rep. Johnson (D-CA)",
-      chamber: "House",
-      state: "federal",
-      summary: "Comprehensive legislation to modernize America's energy infrastructure through investments in renewable energy, smart grid technology, and electric vehicle charging networks.",
-      lastAction: "Referred to Committee on Energy and Commerce",
-      lastActionDate: "2024-01-15T10:00:00Z"
-    },
-    {
-      id: "2",
-      billNumber: "S. 567",
-      title: "Education Equity and Funding Reform Act",
-      status: "Passed Senate",
-      sponsor: "Sen. Williams (D-NY)",
-      chamber: "Senate",
-      state: "federal",
-      summary: "Legislation to address educational inequities by reforming funding formulas and increasing support for underserved communities.",
-      lastAction: "Passed Senate by voice vote",
-      lastActionDate: "2024-01-12T15:30:00Z"
-    },
-    {
-      id: "3",
-      billNumber: "H.R. 2468",
-      title: "Small Business Innovation Support Act",
-      status: "Introduced",
-      sponsor: "Rep. Davis (R-TX)",
-      chamber: "House",
-      state: "federal",
-      summary: "Provides tax incentives and grants for small businesses investing in research and development of innovative technologies.",
-      lastAction: "Introduced in House",
-      lastActionDate: "2024-01-10T09:15:00Z"
-    }
-  ];
-
-  const performSearch = () => {
+  const performSearch = useCallback(() => {
     if (!searchTerm.trim()) {
       toast.error("Please enter a search term");
       return;
     }
 
-    setIsLoading(true);
     setShowSuggestions(false);
+    setHasSearched(true);
+    setCurrentPage(1);
     
     // Update URL params
     const params = new URLSearchParams();
     if (searchTerm) params.set('q', searchTerm);
     if (selectedState) params.set('state', selectedState);
     setSearchParams(params);
+  }, [searchTerm, selectedState, setSearchParams]);
 
-    // Mock search delay
-    setTimeout(() => {
-      setSearchResults(mockBills);
-      setIsLoading(false);
-      setCurrentPage(1);
-    }, 1000);
-  };
+  // Load tracking status for bills when they change
+  useEffect(() => {
+    const loadTrackingStatus = async () => {
+      if (!searchResults.length) return;
+      
+      const trackingStatus = new Set<string>();
+      for (const bill of searchResults) {
+        const billId = bill.bill_id || bill.id;
+        if (billId && await isTracking(billId)) {
+          trackingStatus.add(billId);
+        }
+      }
+      setTrackedBills(trackingStatus);
+    };
 
-  const handleTrackBill = (bill: any) => {
-    if (trackedBills.has(bill.id)) {
-      setTrackedBills(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(bill.id);
-        return newSet;
-      });
-      toast.success("Bill removed from tracking");
+    loadTrackingStatus();
+  }, [searchResults, isTracking]);
+
+  const handleTrackBill = useCallback(async (bill: any) => {
+    const billId = bill.bill_id || bill.id;
+    
+    if (trackedBills.has(billId)) {
+      // Untrack the bill
+      const success = await untrackBill(billId);
+      if (success) {
+        setTrackedBills(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(billId);
+          return newSet;
+        });
+        toast.success("Bill removed from tracking");
+      }
     } else {
       setTrackingBill(bill);
     }
-  };
+  }, [trackedBills, untrackBill]);
 
-  const confirmTrackBill = (campaignId?: string) => {
+  const confirmTrackBill = useCallback(async (campaignId?: string) => {
     if (trackingBill) {
-      setTrackedBills(prev => new Set(prev).add(trackingBill.id));
-      const message = campaignId 
-        ? "Bill added to campaign and tracking" 
-        : "Bill added to tracking";
-      toast.success(message);
-      setTrackingBill(null);
+      const billId = trackingBill.bill_id || trackingBill.id;
+      const result = await trackBill(billId, campaignId);
+      
+      if (result) {
+        setTrackedBills(prev => new Set(prev).add(billId));
+        const message = campaignId 
+          ? "Bill added to campaign and tracking" 
+          : "Bill added to tracking";
+        toast.success(message);
+        setTrackingBill(null);
+      }
     }
-  };
+  }, [trackingBill, trackBill]);
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = useCallback((suggestion: string) => {
     setSearchTerm(suggestion);
     setShowSuggestions(false);
     setTimeout(performSearch, 100);
-  };
+  }, [performSearch]);
 
-  const handleLoadSavedSearch = (search: any) => {
+  const handleLoadSavedSearch = useCallback((search: any) => {
     setSearchTerm(search.query);
     setSelectedState(search.state);
     toast.success(`Loaded search: ${search.name}`);
-  };
+  }, []);
 
   const saveCurrentSearch = () => {
     if (searchTerm.trim()) {
       toast.success("Search saved successfully");
     }
   };
+
+  // Trigger search on page load if URL has search params
+  useEffect(() => {
+    const urlSearchTerm = searchParams.get('q');
+    if (urlSearchTerm && urlSearchTerm.trim()) {
+      setHasSearched(true);
+    }
+  }, [searchParams]);
+
+  // Auto-search when filters change (with debounce)
+  useEffect(() => {
+    if (!hasSearched) return;
+    
+    const timeoutId = setTimeout(() => {
+      // Trigger a re-fetch by updating the filters
+      // The useMemo will handle the actual filter changes
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [statusFilter, committeeFilter, hasSearched]);
+
+  // Debug effect to track search state
+  useEffect(() => {
+    console.log('Search Debug:', {
+      hasSearched,
+      searchTerm,
+      searchResults: searchResults.length,
+      isLoading,
+      totalResults,
+      currentFilters,
+      billsData: billsData?.bills?.length || 0
+    });
+  }, [hasSearched, searchTerm, searchResults, isLoading, totalResults, currentFilters, billsData]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -534,12 +619,27 @@ const Search = () => {
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
-                  <SelectValue />
+                  <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BILL_STATUSES.map(status => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statusOptions?.map(status => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={committeeFilter} onValueChange={setCommitteeFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All Committees" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Committees</SelectItem>
+                  {committeeOptions?.map(committee => (
+                    <SelectItem key={committee} value={committee}>
+                      {committee}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -547,25 +647,12 @@ const Search = () => {
 
               <Select value={chamberFilter} onValueChange={setChamberFilter}>
                 <SelectTrigger className="w-40">
-                  <SelectValue />
+                  <SelectValue placeholder="Both Chambers" />
                 </SelectTrigger>
                 <SelectContent>
                   {CHAMBERS.map(chamber => (
                     <SelectItem key={chamber.value} value={chamber.value}>
                       {chamber.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BILL_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -589,7 +676,7 @@ const Search = () => {
       </Card>
 
       {/* Search Results */}
-      {isLoading ? (
+      {hasSearched && isLoading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 15 }).map((_, i) => (
             <Card key={i}>
@@ -609,7 +696,18 @@ const Search = () => {
             </Card>
           ))}
         </div>
-      ) : searchResults.length > 0 ? (
+      ) : error ? (
+        <div className="text-center py-12">
+          <SearchIcon className="mx-auto h-12 w-12 text-red-400 mb-4" />
+          <h3 className="text-lg font-medium mb-2 text-red-600">Search Error</h3>
+          <p className="text-muted-foreground mb-4">
+            {error}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      ) : hasSearched && searchResults.length > 0 ? (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
@@ -618,14 +716,17 @@ const Search = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {searchResults.map((bill) => (
-              <BillCard
-                key={bill.id}
-                bill={bill}
-                onTrackBill={handleTrackBill}
-                isTracked={trackedBills.has(bill.id)}
-              />
-            ))}
+            {searchResults.map((bill, index) => {
+              const billId = bill.bill_id || bill.id || `bill-${index}`;
+              return (
+                <BillCard
+                  key={`${billId}-${currentPage}`} // Stable key including page
+                  bill={bill}
+                  onTrackBill={handleTrackBill}
+                  isTracked={trackedBills.has(billId)}
+                />
+              );
+            })}
           </div>
 
           <PaginationControls
@@ -634,7 +735,7 @@ const Search = () => {
             onPageChange={setCurrentPage}
           />
         </div>
-      ) : searchTerm ? (
+      ) : hasSearched && searchTerm ? (
         <div className="text-center py-12">
           <SearchIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No bills found</h3>

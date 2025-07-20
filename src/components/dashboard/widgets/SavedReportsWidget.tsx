@@ -14,22 +14,7 @@ interface SavedReport {
   bill_title: string;
 }
 
-const mockReports: SavedReport[] = [
-  {
-    id: "1",
-    title: "Fiscal Impact Analysis",
-    type: 'fiscal',
-    created_at: "2024-01-16T14:30:00Z",
-    bill_title: "Infrastructure Investment Act"
-  },
-  {
-    id: "2",
-    title: "Bill Summary Report",
-    type: 'summary',
-    created_at: "2024-01-15T09:15:00Z",
-    bill_title: "Climate Action Bill"
-  }
-];
+// No mock data - will use real user-generated reports
 
 export function SavedReportsWidget() {
   const { isAuthenticated } = useAppStore();
@@ -44,8 +29,8 @@ export function SavedReportsWidget() {
       }
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setReports(mockReports);
+        // TODO: Fetch user's saved reports from Supabase
+        setReports([]);
       } catch (error) {
         console.error('Error loading reports:', error);
       } finally {

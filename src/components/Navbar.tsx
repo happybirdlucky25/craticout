@@ -23,6 +23,7 @@ const Navbar = () => {
   const navLinks = [
     { to: "/", label: "Dashboard" },
     { to: "/search", label: "Search" },
+    { to: "/tracked", label: "Tracked" },
     { to: "/reports", label: "Reports" },
     { to: "/campaigns", label: "Campaigns" },
     { to: "/legislators", label: "Legislators" },
@@ -140,12 +141,6 @@ const Navbar = () => {
                       Billing
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/pricing">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Upgrade to Premium
-                    </Link>
-                  </DropdownMenuItem>
                   {user?.role === 'admin' && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin">
@@ -242,14 +237,16 @@ const Navbar = () => {
                     <Receipt className="h-5 w-5 mr-2" />
                     Billing
                   </Link>
-                  <Link
-                    to="/pricing"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    <CreditCard className="h-5 w-5 mr-2" />
-                    Upgrade to Premium
-                  </Link>
+                  {!isPremium && (
+                    <Link
+                      to="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                    >
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Upgrade to Premium
+                    </Link>
+                  )}
                   {user?.role === 'admin' && (
                     <Link
                       to="/admin"

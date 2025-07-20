@@ -15,26 +15,7 @@ interface Hearing {
   status: 'scheduled' | 'in_progress' | 'completed';
 }
 
-const mockHearings: Hearing[] = [
-  {
-    id: "1",
-    title: "Infrastructure Bill Committee Review",
-    committee: "House Transportation and Infrastructure",
-    date: "2024-01-18",
-    time: "10:00 AM",
-    location: "Room 2167 Rayburn House Office Building",
-    status: 'scheduled'
-  },
-  {
-    id: "2",
-    title: "Climate Action Subcommittee Hearing",
-    committee: "Senate Environment and Public Works",
-    date: "2024-01-19",
-    time: "2:00 PM",
-    location: "Room 406 Dirksen Senate Office Building",
-    status: 'scheduled'
-  }
-];
+// No mock data - will use real congressional hearing data
 
 export function UpcomingHearingsWidget() {
   const { isAuthenticated } = useAppStore();
@@ -49,8 +30,8 @@ export function UpcomingHearingsWidget() {
       }
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        setHearings(mockHearings);
+        // TODO: Fetch upcoming hearings from congressional API
+        setHearings([]);
       } catch (error) {
         console.error('Error loading hearings:', error);
       } finally {

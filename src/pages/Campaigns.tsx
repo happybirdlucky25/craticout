@@ -145,7 +145,7 @@ const EmptyState = () => (
 );
 
 const Campaigns = () => {
-  const { campaigns, loading, error, refetch } = useCampaigns();
+  const { data: campaigns, loading, error, refetch } = useCampaigns();
 
   if (loading) {
     return (

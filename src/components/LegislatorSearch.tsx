@@ -34,10 +34,10 @@ export function LegislatorSearch() {
   };
 
   const handleStateChange = (value: string) => {
-    setLegislatorFilters({ district: null }); // Reset district when state changes
-    // Note: This should update a state filter, not chamber
-    // For now, we'll use the selectedState from the store
-    // TODO: Implement proper state filtering
+    setLegislatorFilters({ 
+      state: value === 'all' ? null : value,
+      district: null // Reset district when state changes
+    });
   };
 
   const handlePartyChange = (value: string) => {
@@ -82,7 +82,7 @@ export function LegislatorSearch() {
         </Select>
 
         {/* State Filter */}
-        <Select value={legislatorFilters.chamber || 'all'} onValueChange={handleStateChange}>
+        <Select value={legislatorFilters.state || 'all'} onValueChange={handleStateChange}>
           <SelectTrigger>
             <SelectValue placeholder="State" />
           </SelectTrigger>
@@ -126,7 +126,7 @@ export function LegislatorSearch() {
       </div>
 
       {/* Active Filters Display */}
-      {(legislatorFilters.searchTerm || legislatorFilters.chamber || legislatorFilters.party || legislatorFilters.district) && (
+      {(legislatorFilters.searchTerm || legislatorFilters.chamber || legislatorFilters.party || legislatorFilters.district || legislatorFilters.state) && (
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="text-sm text-muted-foreground">Active filters:</span>
           {legislatorFilters.searchTerm && (
@@ -142,6 +142,11 @@ export function LegislatorSearch() {
           {legislatorFilters.party && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
               Party: {legislatorFilters.party}
+            </span>
+          )}
+          {legislatorFilters.state && (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">
+              State: {legislatorFilters.state}
             </span>
           )}
           {legislatorFilters.district && (

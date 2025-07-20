@@ -51,10 +51,11 @@ export function LegislatorList({ legislators, onLegislatorClick }: LegislatorLis
       );
     }
 
-    // Apply state filter from map selection
-    if (selectedState) {
+    // Apply state filter from search or map selection
+    const stateToFilter = legislatorFilters.state || selectedState;
+    if (stateToFilter) {
       filtered = filtered.filter(legislator => 
-        legislator.state === selectedState
+        legislator.state === stateToFilter
       );
     }
 

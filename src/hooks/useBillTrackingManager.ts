@@ -5,6 +5,38 @@ import { toast } from 'sonner';
 import { useCampaigns } from './useCampaigns';
 import type { Campaign } from '@/types/database';
 
+// Mock data store for development (same as useBillTracking)
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+const USE_MOCK_DATA = true; // Set to false to use real Supabase
+
+const getMockTrackedBills = (): any[] => {
+  const stored = localStorage.getItem('mock_tracked_bills');
+  return stored ? JSON.parse(stored) : [
+    {
+      id: '11111111-1111-1111-1111-111111111111',
+      user_id: MOCK_USER_ID,
+      bill_id: 'HB2316',
+      campaign_id: '1',
+      notes: 'Important environmental legislation to monitor',
+      tracked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: '22222222-2222-2222-2222-222222222222', 
+      user_id: MOCK_USER_ID,
+      bill_id: 'SB2256',
+      campaign_id: null,
+      notes: 'Tracking individually',
+      tracked_at: new Date(Date.now() - 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 86400000).toISOString()
+    }
+  ];
+};
+
+const saveMockTrackedBills = (bills: any[]) => {
+  localStorage.setItem('mock_tracked_bills', JSON.stringify(bills));
+};
+
 export const useBillTrackingManager = (billId: string) => {
   const [isTracked, setIsTracked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,8 +50,23 @@ export const useBillTrackingManager = (billId: string) => {
   const checkTrackingStatus = useCallback(async () => {
     try {
       setCheckingStatus(true);
-      const user = { id: '00000000-0000-0000-0000-000000000001' };
+      
+      if (USE_MOCK_DATA) {
+        // Mock implementation
+        const mockBills = getMockTrackedBills();
+        const trackedBill = mockBills.find(bill => 
+          bill.user_id === MOCK_USER_ID && bill.bill_id === billId
+        );
+        setIsTracked(!!trackedBill);
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return;
+      }
 
+      // Real Supabase implementation (commented out for development)
+      /*
+      const user = { id: MOCK_USER_ID };
       const { data, error } = await supabase
         .from('tracked_bills')
         .select('id')
@@ -29,6 +76,7 @@ export const useBillTrackingManager = (billId: string) => {
 
       if (error && error.code !== 'PGRST116') throw error;
       setIsTracked(!!data);
+      */
     } catch (err) {
       console.error('Error checking tracking status:', err);
       setIsTracked(false);
@@ -40,8 +88,51 @@ export const useBillTrackingManager = (billId: string) => {
   const trackBill = useCallback(async () => {
     try {
       setLoading(true);
-      const user = { id: '00000000-0000-0000-0000-000000000001' };
+      
+      if (USE_MOCK_DATA) {
+        // Mock implementation
+        const mockBills = getMockTrackedBills();
+        
+        // Check if already tracked
+        const existingBill = mockBills.find(bill => 
+          bill.user_id === MOCK_USER_ID && bill.bill_id === billId
+        );
+        
+        if (existingBill) {
+          toast.error('Bill is already tracked');
+          return;
+        }
 
+        // Create new tracked bill (schema-compliant)
+        const newTrackedBill = {
+          id: crypto.randomUUID(),
+          user_id: MOCK_USER_ID,
+          bill_id: billId,
+          campaign_id: selectedCampaign === 'none' ? null : selectedCampaign || null,
+          notes: notes || null,
+          tracked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const updatedBills = [...mockBills, newTrackedBill];
+        saveMockTrackedBills(updatedBills);
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
+        setIsTracked(true);
+        toast.success('Bill added to tracking list');
+        setIsModalOpen(false);
+        
+        // Reset form
+        setNotes('');
+        setSelectedCampaign(undefined);
+        return;
+      }
+
+      // Real Supabase implementation (commented out for development)
+      /*
+      const user = { id: MOCK_USER_ID };
       const { error } = await supabase
         .from('tracked_bills')
         .insert([
@@ -64,6 +155,7 @@ export const useBillTrackingManager = (billId: string) => {
         toast.success('Bill added to tracking list');
         setIsModalOpen(false);
       }
+      */
     } catch (err) {
       console.error('Error tracking bill:', err);
       toast.error('Failed to track bill');
@@ -75,8 +167,27 @@ export const useBillTrackingManager = (billId: string) => {
   const untrackBill = useCallback(async () => {
     try {
       setLoading(true);
-      const user = { id: '00000000-0000-0000-0000-000000000001' };
+      
+      if (USE_MOCK_DATA) {
+        // Mock implementation
+        const mockBills = getMockTrackedBills();
+        const updatedBills = mockBills.filter(bill => 
+          !(bill.user_id === MOCK_USER_ID && bill.bill_id === billId)
+        );
+        
+        saveMockTrackedBills(updatedBills);
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        setIsTracked(false);
+        toast.success('Bill removed from tracking list');
+        return;
+      }
 
+      // Real Supabase implementation (commented out for development)
+      /*
+      const user = { id: MOCK_USER_ID };
       const { error } = await supabase
         .from('tracked_bills')
         .delete()
@@ -87,6 +198,7 @@ export const useBillTrackingManager = (billId: string) => {
 
       setIsTracked(false);
       toast.success('Bill removed from tracking list');
+      */
     } catch (err) {
       console.error('Error untracking bill:', err);
       toast.error('Failed to untrack bill');

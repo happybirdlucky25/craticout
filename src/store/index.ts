@@ -85,6 +85,7 @@ interface AppState {
     party: string | null;
     searchTerm: string;
     district: string | null;
+    state: string | null;
   };
   selectedLegislator: Legislator | null;
   
@@ -158,6 +159,7 @@ export const useAppStore = create<AppState>()(
         party: null,
         searchTerm: '',
         district: null,
+        state: null,
       },
       selectedLegislator: null,
       bills: [],

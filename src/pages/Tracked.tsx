@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBillNumber } from "@/utils/billNumberFormatter";
-import { useTrackedBills, useTrackedLegislators, useBillTracking, useLegislatorTracking, useTrackingStats } from "@/hooks/useTracking";
+import { useTrackedBills, useTrackedLegislators, useLegislatorTracking, useTrackingStats } from "@/hooks/useTracking";
+import { useBillTracking } from "@/hooks/useBillTracking";
 import { toast } from "sonner";
 import { 
   FileText, 
@@ -370,7 +371,8 @@ const Tracked = () => {
     const success = await untrackBill(billId);
     if (success) {
       toast.success("Bill removed from tracking");
-      window.location.reload(); // Refresh to update counts
+      // Force refresh of the page to update all counts and lists
+      setTimeout(() => window.location.reload(), 500);
     }
   };
 

@@ -13,6 +13,7 @@ import ReportsWithExistingData from "./pages/ReportsWithExistingData";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetail from "./pages/CampaignDetail";
 import Legislators from "./pages/Legislators";
+import LegislatorDetail from "./pages/LegislatorDetail";
 import Tracked from "./pages/Tracked";
 import Alerts from "./pages/Alerts";
 import Profile from "./pages/Profile";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/campaigns" element={<RouteErrorBoundary><Campaigns /></RouteErrorBoundary>} />
                 <Route path="/campaigns/:id" element={<RouteErrorBoundary><CampaignDetail /></RouteErrorBoundary>} />
                 <Route path="/legislators" element={<RouteErrorBoundary><Legislators /></RouteErrorBoundary>} />
+                <Route path="/legislators/:id" element={<RouteErrorBoundary><LegislatorDetail /></RouteErrorBoundary>} />
                 <Route path="/tracked" element={<RouteErrorBoundary><Tracked /></RouteErrorBoundary>} />
                 <Route path="/alerts" element={<RouteErrorBoundary><Alerts /></RouteErrorBoundary>} />
                 <Route path="/profile" element={<RouteErrorBoundary><Profile /></RouteErrorBoundary>} />

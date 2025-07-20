@@ -1,187 +1,253 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LegislatureToggle } from "../components/LegislatureToggle";
 import { LegislatorSearch } from "../components/LegislatorSearch";
 import { USMap } from "../components/USMap";
 import { LegislatorList } from "../components/LegislatorList";
 import { LegislatorDetail } from "../components/LegislatorDetail";
 import { useAppStore } from "../store";
+import { useLegislators } from "@/hooks/useLegislators";
 import type { Legislator } from "../store";
+import type { PersonFilters } from "@/types/database";
 
-// Mock data for demonstration
+// Configuration flag to switch between mock and real data
+const USE_REAL_DATA = true; // Set to true to use real data, false for mock data
+
+// Mock data for demonstration - Federal legislators from various states
 const mockLegislators: Legislator[] = [
   {
     people_id: "1",
-    name: "John Smith",
-    first_name: "John",
-    last_name: "Smith",
+    name: "Alexandria Ocasio-Cortez",
+    first_name: "Alexandria",
+    last_name: "Ocasio-Cortez",
     party: "Democratic",
     role: "Representative",
-    district: "5",
-    state: "IN",
+    district: "14",
+    state: "NY",
     chamber: "House",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/John_Smith",
-    opensecrets_id: "N00001234"
+    ballotpedia: "https://ballotpedia.org/Alexandria_Ocasio-Cortez",
+    opensecrets_id: "N00041162"
   },
   {
     people_id: "2",
-    name: "Jane Doe",
-    first_name: "Jane",
-    last_name: "Doe",
+    name: "Ted Cruz",
+    first_name: "Ted",
+    last_name: "Cruz",
     party: "Republican",
     role: "Senator",
     district: null,
-    state: "IN",
+    state: "TX",
     chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Jane_Doe",
-    opensecrets_id: "N00005678"
+    ballotpedia: "https://ballotpedia.org/Ted_Cruz",
+    opensecrets_id: "N00033085"
   },
   {
     people_id: "3",
-    name: "Mike Johnson",
-    first_name: "Mike",
-    last_name: "Johnson",
-    party: "Republican",
+    name: "Nancy Pelosi",
+    first_name: "Nancy",
+    last_name: "Pelosi",
+    party: "Democratic",
     role: "Representative",
-    district: "3",
-    state: "IN",
+    district: "11",
+    state: "CA",
     chamber: "House",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Mike_Johnson",
-    opensecrets_id: "N00009012"
+    ballotpedia: "https://ballotpedia.org/Nancy_Pelosi",
+    opensecrets_id: "N00007360"
   },
   {
     people_id: "4",
-    name: "Sarah Williams",
-    first_name: "Sarah",
-    last_name: "Williams",
-    party: "Democratic",
+    name: "Mitch McConnell",
+    first_name: "Mitch",
+    last_name: "McConnell",
+    party: "Republican",
     role: "Senator",
     district: null,
-    state: "IN",
+    state: "KY",
     chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Sarah_Williams",
-    opensecrets_id: "N00003456"
+    ballotpedia: "https://ballotpedia.org/Mitch_McConnell",
+    opensecrets_id: "N00003389"
   },
   {
     people_id: "5",
-    name: "Tom Brown",
-    first_name: "Tom",
-    last_name: "Brown",
-    party: "Republican",
-    role: "Representative",
-    district: "1",
-    state: "IN",
-    chamber: "House",
+    name: "Elizabeth Warren",
+    first_name: "Elizabeth",
+    last_name: "Warren",
+    party: "Democratic",
+    role: "Senator",
+    district: null,
+    state: "MA",
+    chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Tom_Brown",
-    opensecrets_id: "N00007890"
+    ballotpedia: "https://ballotpedia.org/Elizabeth_Warren",
+    opensecrets_id: "N00033492"
   },
   {
     people_id: "6",
-    name: "Lisa Davis",
-    first_name: "Lisa",
-    last_name: "Davis",
-    party: "Democratic",
+    name: "Kevin McCarthy",
+    first_name: "Kevin",
+    last_name: "McCarthy",
+    party: "Republican",
     role: "Representative",
-    district: "7",
-    state: "IN",
+    district: "20",
+    state: "CA",
     chamber: "House",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Lisa_Davis",
-    opensecrets_id: "N00001122"
+    ballotpedia: "https://ballotpedia.org/Kevin_McCarthy",
+    opensecrets_id: "N00028152"
   },
   {
     people_id: "7",
-    name: "Robert Miller",
-    first_name: "Robert",
-    last_name: "Miller",
-    party: "Republican",
-    role: "Representative",
-    district: "4",
-    state: "IN",
-    chamber: "House",
+    name: "Bernie Sanders",
+    first_name: "Bernie",
+    last_name: "Sanders",
+    party: "Independent",
+    role: "Senator",
+    district: null,
+    state: "VT",
+    chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Robert_Miller",
-    opensecrets_id: "N00003344"
+    ballotpedia: "https://ballotpedia.org/Bernie_Sanders",
+    opensecrets_id: "N00000528"
   },
   {
     people_id: "8",
-    name: "Emily Taylor",
-    first_name: "Emily",
-    last_name: "Taylor",
-    party: "Democratic",
-    role: "Representative",
-    district: "9",
-    state: "IN",
-    chamber: "House",
+    name: "Marco Rubio",
+    first_name: "Marco",
+    last_name: "Rubio",
+    party: "Republican",
+    role: "Senator",
+    district: null,
+    state: "FL",
+    chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Emily_Taylor",
-    opensecrets_id: "N00005566"
+    ballotpedia: "https://ballotpedia.org/Marco_Rubio",
+    opensecrets_id: "N00030612"
   },
   {
     people_id: "9",
-    name: "David Wilson",
-    first_name: "David",
-    last_name: "Wilson",
-    party: "Republican",
+    name: "Katie Porter",
+    first_name: "Katie",
+    last_name: "Porter",
+    party: "Democratic",
     role: "Representative",
-    district: "2",
-    state: "IN",
+    district: "47",
+    state: "CA",
     chamber: "House",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/David_Wilson",
-    opensecrets_id: "N00007788"
+    ballotpedia: "https://ballotpedia.org/Katie_Porter",
+    opensecrets_id: "N00041870"
   },
   {
     people_id: "10",
-    name: "Jennifer Garcia",
-    first_name: "Jennifer",
-    last_name: "Garcia",
-    party: "Democratic",
-    role: "Representative",
-    district: "6",
-    state: "IN",
-    chamber: "House",
+    name: "Josh Hawley",
+    first_name: "Josh",
+    last_name: "Hawley",
+    party: "Republican",
+    role: "Senator",
+    district: null,
+    state: "MO",
+    chamber: "Senate",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Jennifer_Garcia",
-    opensecrets_id: "N00009900"
+    ballotpedia: "https://ballotpedia.org/Josh_Hawley",
+    opensecrets_id: "N00041620"
   },
   {
     people_id: "11",
-    name: "Michael Anderson",
-    first_name: "Michael",
-    last_name: "Anderson",
-    party: "Republican",
+    name: "Ilhan Omar",
+    first_name: "Ilhan",
+    last_name: "Omar",
+    party: "Democratic",
     role: "Representative",
-    district: "8",
-    state: "IN",
+    district: "5",
+    state: "MN",
     chamber: "House",
     photo: undefined,
-    ballotpedia: "https://ballotpedia.org/Michael_Anderson",
-    opensecrets_id: "N00002211"
+    ballotpedia: "https://ballotpedia.org/Ilhan_Omar",
+    opensecrets_id: "N00043581"
   }
 ];
 
 const Legislators = () => {
-  const { legislators, setLegislators, loading, setLoading, legislatureLevel, selectedLegislator, setSelectedLegislator } = useAppStore();
+  const { legislators, setLegislators, loading, setLoading, legislatureLevel, selectedLegislator, setSelectedLegislator, legislatorFilters, selectedState } = useAppStore();
   const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    // Initialize with mock data
-    if (!isInitialized) {
-      setLoading('legislators', true);
-      
-      // Simulate API call
-      setTimeout(() => {
-        setLegislators(mockLegislators);
-        setLoading('legislators', false);
-        setIsInitialized(true);
-      }, 1000);
+  // Convert store filters to PersonFilters format for real API
+  const personFilters = useMemo((): PersonFilters => {
+    const filters: PersonFilters = {};
+    
+    if (legislatorFilters.search_term) {
+      filters.search_term = legislatorFilters.search_term;
     }
-  }, [isInitialized, setLegislators, setLoading]);
+    
+    if (legislatorFilters.party) {
+      filters.party = [legislatorFilters.party];
+    }
+    
+    if (legislatorFilters.chamber) {
+      filters.role = [legislatorFilters.chamber === 'House' ? 'Representative' : 'Senator'];
+    }
+    
+    return filters;
+  }, [legislatorFilters]);
+
+  // Use real data hooks when enabled
+  const { data: realLegislatorsData, loading: realLoading, error: realError } = useLegislators(
+    USE_REAL_DATA ? personFilters : {}, 
+    1, 
+    50
+  );
+
+  useEffect(() => {
+    if (USE_REAL_DATA) {
+      // Use real data from hooks
+      if (realLegislatorsData) {
+        // Convert Person[] to Legislator[] format for compatibility
+        const convertedLegislators: Legislator[] = realLegislatorsData.people.map(person => {
+          // Extract state from district format like "HD-FL-4" -> "FL"
+          let extractedState = 'Federal';
+          if (person.district && person.district.includes('-')) {
+            const parts = person.district.split('-');
+            if (parts.length >= 2) {
+              extractedState = parts[1]; // Get state abbreviation
+            }
+          }
+          
+          return {
+            people_id: person.people_id,
+            name: person.name,
+            first_name: person.first_name,
+            last_name: person.last_name,
+            party: person.party,
+            role: person.role,
+            district: person.district,
+            state: extractedState,
+            chamber: person.role === 'Senator' ? 'Senate' : 'House',
+            photo: undefined,
+            ballotpedia: `https://ballotpedia.org/${person.name?.replace(/\s+/g, '_')}`,
+            opensecrets_id: undefined
+          };
+        });
+        
+        setLegislators(convertedLegislators);
+        setLoading('legislators', realLoading);
+      }
+    } else {
+      // Initialize with mock data
+      if (!isInitialized) {
+        setLoading('legislators', true);
+        
+        // Simulate API call
+        setTimeout(() => {
+          setLegislators(mockLegislators);
+          setLoading('legislators', false);
+          setIsInitialized(true);
+        }, 100);
+      }
+    }
+  }, [USE_REAL_DATA, realLegislatorsData, realLoading, isInitialized, setLegislators, setLoading]);
 
   const handleLegislatorClick = (legislator: Legislator) => {
     setSelectedLegislator(legislator);
@@ -190,6 +256,25 @@ const Legislators = () => {
   const handleCloseDetail = () => {
     setSelectedLegislator(null);
   };
+
+  // Handle real data errors
+  if (USE_REAL_DATA && realError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error loading legislators: {realError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading.legislators) {
     return (

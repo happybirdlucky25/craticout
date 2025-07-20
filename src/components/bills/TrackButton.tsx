@@ -2,22 +2,29 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
-import { useBillTracking } from '@/hooks/useBillTracking';
+import { useBillTrackingManager } from '@/hooks/useBillTrackingManager';
+import { TrackBillModal } from './TrackBillModal';
 import { supabase } from '@/integrations/supabase/client';
 
 interface TrackButtonProps {
   billId: string;
+  billTitle?: string;
+  billNumber?: string;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
+  showModal?: boolean; // Control whether to show the modal
   className?: string;
 }
 
 export const TrackButton = ({
   billId,
+  billTitle = 'Bill',
+  billNumber = billId,
   variant = 'outline',
   size = 'md',
   showLabel = true,
+  showModal = true, // Default to true for backward compatibility
   className = ''
 }: TrackButtonProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -25,8 +32,10 @@ export const TrackButton = ({
     isTracked,
     loading,
     checkingStatus,
-    toggleTracking
-  } = useBillTracking(billId);
+    openModal,
+    untrackBill,
+    trackBill
+  } = useBillTrackingManager(billId);
 
   useEffect(() => {
     // Temporarily disable auth for development
@@ -53,7 +62,18 @@ export const TrackButton = ({
       return;
     }
     
-    await toggleTracking();
+    if (isTracked) {
+      // If already tracked, untrack it
+      await untrackBill();
+    } else {
+      // If not tracked, either open modal or track directly
+      if (showModal) {
+        openModal();
+      } else {
+        // Track directly without modal (for search results)
+        await trackBill();
+      }
+    }
   };
 
   const getButtonProps = () => {
@@ -109,18 +129,29 @@ export const TrackButton = ({
   const buttonProps = getButtonProps();
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        {...buttonProps}
-        size={size}
-        onClick={handleClick}
-        className={className}
-      />
-      {isTracked && showLabel && (
-        <Badge variant="secondary" className="text-xs">
-          Following
-        </Badge>
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          {...buttonProps}
+          size={size}
+          onClick={handleClick}
+          className={className}
+        />
+        {isTracked && showLabel && (
+          <Badge variant="secondary" className="text-xs">
+            Following
+          </Badge>
+        )}
+      </div>
+      
+      {/* Track Bill Modal - only render if showModal is true */}
+      {showModal && (
+        <TrackBillModal 
+          billId={billId}
+          billTitle={billTitle}
+          billNumber={billNumber}
+        />
       )}
-    </div>
+    </>
   );
 };

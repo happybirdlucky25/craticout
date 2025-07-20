@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCampaigns, useCampaignOperations } from "@/hooks/useCampaigns";
 import { toast } from "sonner";
 import { Plus, Users, Calendar, FileText, Target } from "lucide-react";
@@ -145,7 +145,7 @@ const EmptyState = () => (
 );
 
 const Campaigns = () => {
-  const { data: campaigns, loading, error, refetch } = useCampaigns();
+  const { campaigns, loading, error, refetch } = useCampaigns();
 
   if (loading) {
     return (

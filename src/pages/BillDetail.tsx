@@ -232,7 +232,11 @@ const BillDetail = () => {
               </span>
             )}
           </div>
-          <TrackButton billId={bill.bill_id} />
+          <TrackButton 
+            billId={bill.bill_id}
+            billTitle={bill.title}
+            billNumber={formatBillNumber(bill.bill_number)}
+          />
         </div>
         <h1 className="text-3xl font-bold mb-4">{bill.title}</h1>
         {bill.description && (

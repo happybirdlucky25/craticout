@@ -5,6 +5,7 @@ import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { Skeleton } from "../../ui/skeleton";
 import { useAppStore } from "../../../store";
+import { useTracking } from "../../../hooks/useTracking";
 
 interface TrackedBill {
   id: string;
@@ -20,29 +21,18 @@ interface TrackedBill {
 
 export function TrackedBillsWidget() {
   const { user, isAuthenticated } = useAppStore();
-  const [bills, setBills] = useState<TrackedBill[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { trackedBills, loading } = useTracking();
 
-  useEffect(() => {
-    const loadTrackedBills = async () => {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // TODO: Fetch user's tracked bills from Supabase
-        // For now, show empty state until user tracking is implemented
-        setBills([]);
-      } catch (error) {
-        console.error('Error loading tracked bills:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTrackedBills();
-  }, [isAuthenticated]);
+  // Transform tracked bills data for the widget
+  const bills = trackedBills.map(bill => ({
+    id: bill.bill_id,
+    title: bill.title || 'Bill Title',
+    status: bill.status || 'Unknown',
+    last_action: bill.last_action || 'No recent action',
+    last_action_date: bill.last_action_date || new Date().toISOString(),
+    sponsor: bill.sponsor || 'Unknown',
+    chamber: bill.chamber || 'Unknown'
+  }));
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

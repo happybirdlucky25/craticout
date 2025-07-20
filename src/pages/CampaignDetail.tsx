@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCampaign, useCampaignOperations } from "@/hooks/useCampaigns";
+import { useCampaign, useCampaignBills, useCampaignLegislators, useCampaignDocuments, useCampaignNotes } from "@/hooks/useCampaign";
 import { useTrackedBills } from "@/hooks/useTracking";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -28,20 +28,23 @@ import {
   FileText,
   Brain,
   NotebookPen,
-  Target
+  Target,
+  Trash2
 } from "lucide-react";
-import { StakeholdersTab, BillsTab, AnalysisTab, NotesTab } from "@/components/CampaignTabs";
+// Using inline tab components with real database data
 
 const EditableTitleBar = ({ 
   title, 
   description, 
   onTitleChange, 
-  onDescriptionChange 
+  onDescriptionChange,
+  onDeleteCampaign
 }: {
   title: string;
   description: string;
   onTitleChange: (title: string) => void;
   onDescriptionChange: (description: string) => void;
+  onDeleteCampaign: () => void;
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -96,6 +99,26 @@ const EditableTitleBar = ({
             </Button>
           </div>
         )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your
+                campaign and remove all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={onDeleteCampaign}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       
       <div className="flex items-start gap-2">
@@ -135,222 +158,42 @@ const EditableTitleBar = ({
   );
 };
 
-// New Campaign Tab Components for Real Data Integration
-
-const LegislatorsTab = ({ campaign }: { campaign: any }) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Campaign Legislators</h3>
-        <p className="text-sm text-muted-foreground">
-          {campaign.legislator_count || 0} legislators tracked
-        </p>
-      </div>
-
-      {campaign.legislators?.length > 0 ? (
-        <div className="space-y-4">
-          {campaign.legislators.map((legislator: any) => (
-            <Card key={legislator.id}>
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-medium">{legislator.person?.name}</h4>
-                      <Badge variant="secondary">{legislator.role}</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <div><strong>Party:</strong> {legislator.person?.party}</div>
-                      <div><strong>Role:</strong> {legislator.person?.role}</div>
-                      {legislator.person?.district && (
-                        <div><strong>District:</strong> {legislator.person.district}</div>
-                      )}
-                      {legislator.notes && (
-                        <div><strong>Notes:</strong> {legislator.notes}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <Target className="mx-auto h-12 w-12 mb-2 opacity-50" />
-          <p>No legislators added to this campaign yet</p>
-          <p className="text-sm">Legislators are automatically added when you track bills with sponsors</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const CampaignBillsTab = ({ campaign }: { campaign: any }) => {
-  const navigate = useNavigate();
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'passed': return 'bg-green-100 text-green-800';
-      case 'signed': return 'bg-blue-100 text-blue-800';
-      case 'in committee': 
-      case 'committee': return 'bg-yellow-100 text-yellow-800';
-      case 'introduced': return 'bg-gray-100 text-gray-800';
-      case 'vetoed': return 'bg-red-100 text-red-800';
-      case 'dead': 
-      case 'failed': return 'bg-red-50 text-red-600';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Campaign Bills</h3>
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            {campaign.bill_count || 0} bills tracked
-          </p>
-          <Button onClick={() => navigate('/search')}>
-            <FileText className="h-4 w-4 mr-2" />
-            Add Bills
-          </Button>
-        </div>
-      </div>
-
-      {campaign.bills?.length > 0 ? (
-        <div className="space-y-4">
-          {campaign.bills.map((campaignBill: any) => {
-            const bill = campaignBill.bill;
-            return (
-              <Card key={campaignBill.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/bills/${bill.bill_id}`)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">{bill.bill_number}</Badge>
-                        <Badge className={`${getStatusColor(bill.status || '')} text-xs`}>
-                          {bill.status || 'Unknown'}
-                        </Badge>
-                      </div>
-                      <h4 className="font-medium mb-1">{bill.title}</h4>
-                      <div className="text-sm text-muted-foreground">
-                        <div>{bill.description}</div>
-                        {bill.last_action && (
-                          <div>Last action: {bill.last_action} ({new Date(bill.last_action_date).toLocaleDateString()})</div>
-                        )}
-                      </div>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => navigate(`/bills/${bill.bill_id}`)}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
-          <p>No bills added to this campaign yet</p>
-          <p className="text-sm">Go to Search to find and track bills for this campaign</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const CampaignAnalysisTab = ({ campaign }: { campaign: any }) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">AI Analysis Tools</h3>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            Generate AI Reports
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Brain className="mx-auto h-12 w-12 mb-2 opacity-50" />
-            <p>AI analysis tools coming soon</p>
-            <p className="text-sm">Generate comprehensive reports from your tracked bills and legislators</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const CampaignNotesTab = ({ campaign, onNotesChange, hasUnsavedChanges }: {
-  campaign: any;
-  onNotesChange: (notes: string) => void;
-  hasUnsavedChanges: boolean;
-}) => {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Campaign Notes</h3>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8 text-muted-foreground">
-            <NotebookPen className="mx-auto h-12 w-12 mb-2 opacity-50" />
-            <p>Note-taking functionality coming soon</p>
-            <p className="text-sm">Rich text editor for campaign planning and strategy notes</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+// Campaign Detail page now uses inline components with real database integration
 
 const CampaignDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: campaign, loading, error, refetch } = useCampaign(id || '');
-  const { updateCampaign, removeBillFromCampaign } = useCampaignOperations();
+  const { campaign, loading, error, refetch, updateCampaign } = useCampaign(id || '');
+  const { bills, loading: billsLoading } = useCampaignBills(id || '');
+  const { legislators, loading: legislatorsLoading } = useCampaignLegislators(id || '');
+  const { documents, loading: documentsLoading } = useCampaignDocuments(id || '');
+  const { notes, loading: notesLoading, updateNotes } = useCampaignNotes(id || '');
   const [activeTab, setActiveTab] = useState("bills");
   const [hasUnsavedNotes, setHasUnsavedNotes] = useState(false);
 
   const handleTitleChange = async (newTitle: string) => {
     if (!campaign?.id) return;
-    const success = await updateCampaign(campaign.id, { name: newTitle });
-    if (!success) {
+    try {
+      await updateCampaign({ name: newTitle });
+      toast.success("Campaign title updated");
+    } catch (error) {
       toast.error("Failed to update campaign title");
     }
   };
 
   const handleDescriptionChange = async (newDescription: string) => {
     if (!campaign?.id) return;
-    const success = await updateCampaign(campaign.id, { description: newDescription });
-    if (!success) {
+    try {
+      await updateCampaign({ description: newDescription });
+      toast.success("Campaign description updated");
+    } catch (error) {
       toast.error("Failed to update campaign description");
     }
   };
 
-  const handleNotesChange = useCallback((newNotes: string) => {
-    setHasUnsavedNotes(true);
-    // In real implementation, would update campaign notes
-  }, []);
-
-  const handleRemoveBill = async (campaignBillId: string) => {
-    const success = await removeBillFromCampaign(campaignBillId);
-    if (success) {
-      refetch();
-    }
+  const handleDeleteCampaign = async () => {
+    // TODO: Implement campaign deletion
+    toast.success("Campaign deletion functionality coming soon");
   };
 
   return (
@@ -371,6 +214,7 @@ const CampaignDetail = () => {
             description={campaign.description || ''}
             onTitleChange={handleTitleChange}
             onDescriptionChange={handleDescriptionChange}
+            onDeleteCampaign={handleDeleteCampaign}
           />
         )}
       </div>
@@ -413,28 +257,231 @@ const CampaignDetail = () => {
           </TabsList>
 
           <TabsContent value="legislators">
-            <LegislatorsTab campaign={campaign} />
+            {legislatorsLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="pt-4">
+                      <Skeleton className="h-6 w-1/3 mb-2" />
+                      <Skeleton className="h-4 w-full mb-1" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Campaign Legislators</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {legislators.length} legislators tracked
+                  </p>
+                </div>
+                {legislators.length > 0 ? (
+                  <div className="space-y-4">
+                    {legislators.map((legislator) => (
+                      <Card key={legislator.id}>
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-medium">{legislator.name}</h4>
+                                <Badge variant="secondary">{legislator.role}</Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground space-y-1">
+                                <div><strong>Party:</strong> {legislator.party}</div>
+                                <div><strong>Office:</strong> {legislator.office}</div>
+                                {legislator.district && (
+                                  <div><strong>District:</strong> {legislator.district}</div>
+                                )}
+                                {legislator.notes && (
+                                  <div><strong>Notes:</strong> {legislator.notes}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Target className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                    <p>No legislators added to this campaign yet</p>
+                    <p className="text-sm">Legislators are automatically added when you track bills with sponsors</p>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="bills">
-            <BillsTab 
-              campaignId={campaign.id}
-              bills={campaign.bills || []}
-              onRemove={handleRemoveBill}
-              onRefresh={refetch}
-            />
+            {billsLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="pt-4">
+                      <Skeleton className="h-6 w-1/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-1" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Campaign Bills</h3>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-muted-foreground">
+                      {bills.length} bills tracked
+                    </p>
+                    <Button onClick={() => navigate('/search')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Add Bills
+                    </Button>
+                  </div>
+                </div>
+                {bills.length > 0 ? (
+                  <div className="space-y-4">
+                    {bills.map((campaignBill) => (
+                      <Card key={campaignBill.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between">
+                            <div 
+                              className="flex-1 cursor-pointer"
+                              onClick={() => navigate(`/bills/${campaignBill.bill_id}`)}
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline">{campaignBill.bill_number}</Badge>
+                                <Badge variant="secondary">{campaignBill.priority}</Badge>
+                                {campaignBill.status && (
+                                  <Badge variant="outline">{campaignBill.status}</Badge>
+                                )}
+                              </div>
+                              <h4 className="font-medium mb-1">{campaignBill.title}</h4>
+                              <div className="text-sm text-muted-foreground">
+                                {campaignBill.description && (
+                                  <div className="mb-1">{campaignBill.description}</div>
+                                )}
+                                {campaignBill.notes && (
+                                  <div className="text-blue-600"><strong>Campaign Notes:</strong> {campaignBill.notes}</div>
+                                )}
+                                {campaignBill.last_action_date && (
+                                  <div>Last action: {new Date(campaignBill.last_action_date).toLocaleDateString()}</div>
+                                )}
+                              </div>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => navigate(`/bills/${campaignBill.bill_id}`)}
+                            >
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                    <p>No bills added to this campaign yet</p>
+                    <p className="text-sm">Go to Search to find and track bills for this campaign</p>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="analysis">
-            <CampaignAnalysisTab campaign={campaign} />
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Campaign Analysis</h3>
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    {documents.length} documents uploaded
+                  </p>
+                </div>
+              </div>
+              {documentsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="pt-4">
+                        <Skeleton className="h-4 w-1/3 mb-2" />
+                        <Skeleton className="h-4 w-full" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <Card key={doc.id}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{doc.file_name}</h4>
+                            <div className="text-sm text-muted-foreground">
+                              {doc.file_type} • {(doc.file_size / 1024).toFixed(1)} KB • 
+                              Uploaded {new Date(doc.uploaded_at || '').toLocaleDateString()}
+                            </div>
+                          </div>
+                          <Badge variant="outline">{doc.file_type}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Brain className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                  <p>No documents uploaded yet</p>
+                  <p className="text-sm">Upload documents to generate AI analysis and reports</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="notes">
-            <CampaignNotesTab 
-              campaign={campaign}
-              onNotesChange={handleNotesChange}
-              hasUnsavedChanges={hasUnsavedNotes}
-            />
+            {notesLoading ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <Skeleton className="h-32 w-full" />
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Campaign Notes</h3>
+                  {hasUnsavedNotes && (
+                    <Badge variant="outline" className="text-orange-600">
+                      Unsaved changes
+                    </Badge>
+                  )}
+                </div>
+                <Card>
+                  <CardContent className="pt-6">
+                    <Textarea
+                      placeholder="Add your campaign notes, strategy, and key insights here..."
+                      value={notes?.content || ''}
+                      onChange={(e) => {
+                        updateNotes(e.target.value);
+                        setHasUnsavedNotes(false);
+                      }}
+                      className="min-h-64 resize-none"
+                    />
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {notes?.updated_at && (
+                        <span>Last updated: {new Date(notes.updated_at).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       ) : null}

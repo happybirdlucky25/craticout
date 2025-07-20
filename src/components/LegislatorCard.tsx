@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { User, Bell, FileText, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, Bell, BellOff, FileText, ExternalLink, Loader2 } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useAppStore } from "../store";
+import { useLegislatorTracking } from "@/hooks/useTracking";
+import { toast } from "sonner";
 import type { Legislator } from "../store";
 
 interface LegislatorCardProps {
@@ -14,7 +17,10 @@ interface LegislatorCardProps {
 
 export function LegislatorCard({ legislator, onCardClick }: LegislatorCardProps) {
   const { isAuthenticated } = useAppStore();
+  const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
+  const [isTracking, setIsTracking] = useState(false);
+  const { trackLegislator, untrackLegislator, isTracking: checkTracking, loading } = useLegislatorTracking();
 
   const getPartyColor = (party: string | null) => {
     if (!party) return "bg-gray-100 text-gray-800";
@@ -39,10 +45,43 @@ export function LegislatorCard({ legislator, onCardClick }: LegislatorCardProps)
       .toUpperCase();
   };
 
-  const handleTrackClick = (e: React.MouseEvent) => {
+  // Check tracking status on component mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (legislator.people_id) {
+        const tracked = await checkTracking(legislator.people_id);
+        setIsTracking(tracked);
+      }
+    };
+    checkStatus();
+  }, [legislator.people_id, checkTracking]);
+
+  const handleTrackClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Implement track functionality
-    console.log('Track legislator:', legislator.people_id);
+    
+    if (!isAuthenticated) {
+      toast.error("Please log in to track legislators");
+      return;
+    }
+
+    try {
+      if (isTracking) {
+        const success = await untrackLegislator(legislator.people_id);
+        if (success) {
+          setIsTracking(false);
+          toast.success(`Stopped tracking ${legislator.name}`);
+        }
+      } else {
+        const result = await trackLegislator(legislator.people_id);
+        if (result) {
+          setIsTracking(true);
+          toast.success(`Now tracking ${legislator.name}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling legislator tracking:', error);
+      toast.error("Failed to update tracking status");
+    }
   };
 
   const handleAddNoteClick = (e: React.MouseEvent) => {
@@ -56,12 +95,16 @@ export function LegislatorCard({ legislator, onCardClick }: LegislatorCardProps)
     window.open(url, '_blank');
   };
 
+  const handleCardClick = () => {
+    navigate(`/legislators/${legislator.people_id}`);
+  };
+
   return (
     <Card 
       className="cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onCardClick(legislator)}
+      onClick={handleCardClick}
     >
       <CardContent className="p-4">
         <div className="flex items-start space-x-4">
@@ -85,9 +128,17 @@ export function LegislatorCard({ legislator, onCardClick }: LegislatorCardProps)
                     variant="ghost"
                     size="sm"
                     onClick={handleTrackClick}
+                    disabled={loading}
                     className="h-8 w-8 p-0"
+                    title={isTracking ? 'Stop tracking' : 'Track legislator'}
                   >
-                    <Bell className="h-4 w-4" />
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isTracking ? (
+                      <BellOff className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -106,28 +157,32 @@ export function LegislatorCard({ legislator, onCardClick }: LegislatorCardProps)
               {legislator.party || 'Unknown'}
             </Badge>
 
-            {/* Details */}
-            <div className="space-y-1 text-sm text-muted-foreground">
+            {/* Enhanced Details Display */}
+            <div className="space-y-2 text-sm">
+              {/* Role and State on one line */}
               <div className="flex items-center justify-between">
-                <span>State:</span>
-                <span className="font-medium">{legislator.state || 'N/A'}</span>
+                <span className="text-muted-foreground">Role:</span>
+                <span className="font-medium">{legislator.role || 'Representative'}</span>
               </div>
               
-              <div className="flex items-center justify-between">
-                <span>Chamber:</span>
-                <span className="font-medium">{legislator.chamber || 'N/A'}</span>
-              </div>
-              
+              {/* District prominently displayed */}
               {legislator.district && (
                 <div className="flex items-center justify-between">
-                  <span>District:</span>
-                  <span className="font-medium">{legislator.district}</span>
+                  <span className="text-muted-foreground">District:</span>
+                  <span className="font-medium text-blue-600">{legislator.district}</span>
                 </div>
               )}
               
+              {/* State */}
               <div className="flex items-center justify-between">
-                <span>Role:</span>
-                <span className="font-medium">{legislator.role || 'N/A'}</span>
+                <span className="text-muted-foreground">State:</span>
+                <span className="font-medium">{legislator.state || 'Federal'}</span>
+              </div>
+              
+              {/* Chamber */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Chamber:</span>
+                <span className="font-medium">{legislator.chamber || 'House'}</span>
               </div>
             </div>
 

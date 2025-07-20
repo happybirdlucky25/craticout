@@ -6,6 +6,7 @@ import { Badge } from "../../ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Skeleton } from "../../ui/skeleton";
 import { useAppStore } from "../../../store";
+import { useTracking } from "../../../hooks/useTracking";
 
 interface TrackedLegislator {
   id: string;
@@ -22,29 +23,19 @@ interface TrackedLegislator {
 
 export function TrackedLegislatorsWidget() {
   const { user, isAuthenticated } = useAppStore();
-  const [legislators, setLegislators] = useState<TrackedLegislator[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { trackedLegislators, loading } = useTracking();
 
-  useEffect(() => {
-    const loadTrackedLegislators = async () => {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // TODO: Fetch user's tracked legislators from Supabase
-        // For now, show empty state until user tracking is implemented
-        setLegislators([]);
-      } catch (error) {
-        console.error('Error loading tracked legislators:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTrackedLegislators();
-  }, [isAuthenticated]);
+  // Transform tracked legislators data for the widget
+  const legislators = trackedLegislators.map(legislator => ({
+    id: legislator.people_id,
+    name: legislator.name || 'Legislator Name',
+    party: legislator.party || 'Unknown',
+    state: legislator.state || 'Unknown',
+    chamber: legislator.chamber || 'Unknown',
+    district: legislator.district,
+    photo: legislator.photo,
+    recent_activity: 'Recent voting activity'
+  }));
 
   const getPartyColor = (party: string) => {
     switch (party.toLowerCase()) {
